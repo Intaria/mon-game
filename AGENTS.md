@@ -106,9 +106,14 @@ These are not style preferences; breaking them breaks the workflow.
   Never swallow an error.
 - One logging category per system: `DECLARE_LOG_CATEGORY_EXTERN(LogCreatures, …)`.
 
-## 5. Data conventions (detail defined at Layer 1)
+## 5. Data conventions (specified in [`Docs/data/schema.md`](Docs/data/schema.md))
 
-- Every data record has a stable string ID; IDs are never reused or repurposed.
+- **`Docs/data/schema.md` is the single source of truth for data structure** (ER diagrams,
+  table spec, approved decisions). Any change to `Data/`, C++ row structs, or the
+  save-game schema **must** update that document in the **same commit** — a schema
+  change without the diagram/spec update is an incomplete commit.
+- Every data record has a stable string ID (namespaced slug, e.g. `species.bulbasaur`);
+  IDs are never reused or repurposed.
 - CSV/JSON in `Data/` mirrors a C++ `USTRUCT` row type — schema changes touch **both**
   in one commit.
 - Data files are reviewable text: no exported-from-editor blobs, no binary formatting.
@@ -135,7 +140,8 @@ These are not style preferences; breaking them breaks the workflow.
   1. builds without new warnings,
   2. relevant tests pass,
   3. docs/GDD updated if behavior or schema changed,
-  4. this AGENTS.md still describes reality.
+  4. this AGENTS.md still describes reality,
+  5. `Docs/data/schema.md` updated if data structure changed (ER + spec).
 
 ## 7. Workflow
 
