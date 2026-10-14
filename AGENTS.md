@@ -21,8 +21,10 @@
   (human or agent) can pick up without re-deriving context.
 - **Target platforms:** PC first (Windows, Linux), mobile later. Mobile is a
   *future* constraint — respect it in input/architecture decisions, do not build for it now.
-- **Working project name:** TBD (see `Docs/ROADMAP.md`); the real name is decided before
-  the UE project skeleton is created.
+- **Working project name:** `mon-game` (repository name). UE identifiers use
+  PascalCase `MonGame` (`MonGame.uproject`, module `MonGame`) because hyphens are
+  invalid in UBT/C++ identifiers. A final marketing name may replace it later — that
+  is an explicit rename task, never a silent change.
 
 ## 2. Hard policies
 
