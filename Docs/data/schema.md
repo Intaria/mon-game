@@ -55,8 +55,8 @@ erDiagram
         string color
     }
     TYPE_CHART {
-        string attacker_type_id PK_FK
-        string defender_type_id PK_FK
+        string attacker_type_id PK
+        string defender_type_id PK
         float multiplier
     }
     STATUS {
@@ -114,7 +114,7 @@ erDiagram
     SPECIES ||--o{ ZONE_ENCOUNTER : "encountered"
     ZONE ||--o{ ZONE_WEATHER : "weather rules"
     WEATHER ||--o{ ZONE_WEATHER : "allowed"
-    ZONE ||--o{ CONDITION : "spawn conditions"
+    ZONE_SPAWN ||--o{ CONDITION : "spawn conditions"
     ZONE {
         string zone_id PK
         string kind
@@ -276,10 +276,10 @@ erDiagram
 | `condition` | `row_id (PK)`, `owner_type`, `owner_id`, `condition_type`, `params`, `combine (all\|any, default all)` | типы: `level_ge`, `time_of_day`, `weather_is`, `friendship_ge`, `has_item`, `quest_done`, `species_defeated`, `ability_used_n_times`, `species_in_set`, … **новый WIP = новый тип, не миграция** |
 | `effect` | `row_id (PK)`, `owner_type`, `owner_id`, `effect_type`, `target`, `params`, `chance`, `duration` | типы: `damage` (формула C++), `apply_status`, `modify_stat`, `buff`, `teleport`, `give_item`, `trigger_evolution`, `capture_bonus`, `equip_slot`, `give_achievement`, … |
 
-`owner_type` — закрытый список доменов (`species`, `evolution`, `ability`, `item`, `status`,
-`mutation`, `weather`, `zone_spawn`, `zone_encounter`, `spawn_row`, `shop_row`, `dialogue_node`,
-`quest`, `recipe`, `achievement`, `trainer_rules`, `event`, `breeding`, …); валидатор проверяет,
-что `owner_id` существует в указанном домене.
+`owner_type` — закрытый список доменов (`species`, `species_learnset`, `evolution`, `ability`,
+`breeding`, `item`, `status`, `mutation`, `weather`, `zone_spawn`, `zone_encounter`,
+`shop_stock`, `dialogue_node`, `quest`, `recipe`, `achievement`, `trainer_rules`, `event`, …);
+валидатор проверяет, что `owner_id` существует в указанном домене.
 
 ---
 
