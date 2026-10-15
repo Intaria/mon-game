@@ -180,7 +180,7 @@ erDiagram
 
 ### A. `Data/Types/` и `Data/Battle/`
 
-**`type`** — `Data/Types/type.csv`
+**`type`** — типы существ и способностей
 
 | Поле | Описание |
 |---|---|
@@ -191,7 +191,7 @@ erDiagram
 
 *Заметки: 12 типов (GDD).*
 
-**`type_chart`** — `Data/Types/type_chart.csv`
+**`type_chart`** — матрица уязвимостей типов друг к другу
 
 | Поле | Описание |
 |---|---|
@@ -201,7 +201,7 @@ erDiagram
 
 *Заметки: **полная сетка 12×12 = 144 строки** (№3); до 2 типов у существа → итог = произведение двух строк.*
 
-**`status`** — `Data/Battle/status.csv`
+**`status`** — боевые статусы и правила их снятия
 
 | Поле | Описание |
 |---|---|
@@ -214,7 +214,7 @@ erDiagram
 
 *Заметки: эффекты статуса — строки `Rules/effects` (owner=status); «не проходит после боя» ✓ GDD.*
 
-**`nature`** — `Data/Battle/nature.csv`
+**`nature`** — характеры существ: поведение и анимации
 
 | Поле | Описание |
 |---|---|
@@ -234,7 +234,7 @@ erDiagram
 
 Термин **Ability** (решение №10; рус. «способность» — термин GDD).
 
-**`ability`** — `Data/Abilities/ability.csv`
+**`ability`** — способности существ: боевые атаки и навыки вне боя
 
 | Поле | Описание |
 |---|---|
@@ -259,7 +259,7 @@ erDiagram
 
 Хаб + child-таблицы (решение №7).
 
-**`species`** — `Data/Species/species.csv`
+**`species`** — профиль вида: типы, поведение, размеры, ассеты
 
 | Поле | Описание |
 |---|---|
@@ -290,7 +290,7 @@ erDiagram
 
 *Заметки: дефолты поведения; зона может их переопределить (GDD).*
 
-**`species_stat_range`** — `Data/Species/species_stat_range.csv`
+**`species_stat_range`** — диапазоны прокрутки статов вида
 
 | Поле | Описание |
 |---|---|
@@ -302,7 +302,7 @@ erDiagram
 
 *Заметки: EAV-строки: диапазоны вида + пул очков; формула от уровня — C++ (принцип 6).*
 
-**`species_learnset`** — `Data/Species/species_learnset.csv`
+**`species_learnset`** — способности, изучаемые видом
 
 | Поле | Описание |
 |---|---|
@@ -313,7 +313,7 @@ erDiagram
 
 *Заметки: «у каждого вида свой диапазон навыков»; условия вхождения — `Rules/conditions` (owner=строка learnset).*
 
-**`evolution`** — `Data/Species/evolution.csv`
+**`evolution`** — варианты эволюции видов
 
 | Поле | Описание |
 |---|---|
@@ -324,7 +324,7 @@ erDiagram
 
 *Заметки: «ИЛИ» = несколько строк от одного from; **критерии** (уровень, время суток, дружба, предмет, счётчики, победы…) = `Rules/conditions` (owner=evolution); жёсткий список to ✓ GDD.*
 
-**`mutation`** — `Data/Species/Mutations/mutation.csv`
+**`mutation`** — мутации существ: внешние изменения
 
 | Поле | Описание |
 |---|---|
@@ -337,7 +337,7 @@ erDiagram
 
 *Заметки: стат-модификаторы — `Rules/effects` (owner=mutation); `hidden` — скрытые мутации из WIP-размножения.*
 
-**`species_mutation`** — `Data/Species/Mutations/species_mutation.csv`
+**`species_mutation`** — допустимые мутации для каждого вида
 
 | Поле | Описание |
 |---|---|
@@ -347,7 +347,7 @@ erDiagram
 
 *Заметки: допустимый набор мутаций вида; лимит — `species.mutation_slots_max`.*
 
-**`species_pigment`** — `Data/Species/Pigments/species_pigment.csv`
+**`species_pigment`** — диапазоны оттенков окраски вида
 
 | Поле | Описание |
 |---|---|
@@ -358,7 +358,7 @@ erDiagram
 
 *Заметки: базовый оттенок — `species.base_tint`.*
 
-**`species_cosmetic`** — `Data/Species/species_cosmetic.csv`
+**`species_cosmetic`** — косметика, доступная виду
 
 | Поле | Описание |
 |---|---|
@@ -367,7 +367,7 @@ erDiagram
 
 *Заметки: разблокированные слоты вида.*
 
-**`species_food`** — `Data/Species/species_food.csv`
+**`species_food`** — предпочитаемая видом еда
 
 | Поле | Описание |
 |---|---|
@@ -377,7 +377,7 @@ erDiagram
 
 *Заметки: предпочтения по еде.*
 
-**`species_breeding`** — `Data/Species/species_breeding.csv`
+**`species_breeding`** — правила размножения вида
 
 | Поле | Описание |
 |---|---|
@@ -385,7 +385,7 @@ erDiagram
 
 *Заметки: **таблица-владелец**: строки `Rules/conditions` (owner=`breeding:<species>`) хранят ограничения на партнёра (GDD).*
 
-**`alt_art`** — `Data/Species/alt_art.csv`
+**`alt_art`** — альтернативные образы вида: события и скины
 
 | Поле | Описание |
 |---|---|
@@ -399,7 +399,7 @@ erDiagram
 
 ### D. `Data/Items/`
 
-**`item`** — `Data/Items/item.csv`
+**`item`** — каталог предметов: категории, цены, стеки
 
 | Поле | Описание |
 |---|---|
@@ -416,7 +416,7 @@ erDiagram
 
 *Заметки: **одна цена на покупку и продажу** (GDD), одинаковая для всех NPC; квестовые (`quest`) нельзя продать — валидатор проверяет `sellable=0`; эффекты (зелья/ягоды/покеболы→capture_bonus/камни→trigger_evolution/косметика→equip_slot) = `Rules/effects` (owner=item).*
 
-**`craft_recipe`** — `Data/Items/craft_recipe.csv`
+**`craft_recipe`** — рецепты крафта
 
 | Поле | Описание |
 |---|---|
@@ -428,7 +428,7 @@ erDiagram
 
 *Заметки: разблокировка — `Rules/conditions` (owner=recipe); эпик крафта — отдельный слой (GDD).*
 
-**`recipe_ingredient`** — `Data/Items/recipe_ingredient.csv`
+**`recipe_ingredient`** — ингредиенты рецептов и их количество
 
 | Поле | Описание |
 |---|---|
@@ -438,7 +438,7 @@ erDiagram
 
 ### E. `Data/Meta/` и `Data/Balance/`
 
-**`gameplay_config`** — `Data/Balance/gameplay_config.csv`
+**`gameplay_config`** — константы баланса, правятся без пересборки
 
 | Поле | Описание |
 |---|---|
@@ -448,7 +448,7 @@ erDiagram
 
 *Заметки: константы: `party_size=6`, `ability_slots_max=5`, `active_creatures_max=2`, дистанции деспавна, параметры формул, коэффициенты поимки (правка без пересборки, принцип 6).*
 
-**`currency`** — `Data/Meta/currency.csv`
+**`currency`** — валюты игры
 
 | Поле | Описание |
 |---|---|
@@ -459,7 +459,7 @@ erDiagram
 
 *Заметки: «деньги и прочие валюты» (GDD).*
 
-**`appearance_option`** — `Data/Meta/appearance_option.csv`
+**`appearance_option`** — варианты внешности игрока и NPC
 
 | Поле | Описание |
 |---|---|
@@ -471,7 +471,7 @@ erDiagram
 
 *Заметки: каталог вариантов внешности игрока и NPC.*
 
-**`cosmetic_slot`** — `Data/Meta/cosmetic_slot.csv`
+**`cosmetic_slot`** — слоты косметики: персонаж и покемон
 
 | Поле | Описание |
 |---|---|
@@ -481,7 +481,7 @@ erDiagram
 
 *Заметки: фиксированные списки слотов из GDD (персонаж 12, покемон 6).*
 
-**`loc`** — `Data/Meta/loc.csv`
+**`loc`** — строки локализации (ru/en)
 
 | Поле | Описание |
 |---|---|
@@ -493,7 +493,7 @@ erDiagram
 
 ### F. `Data/Zones/` и `Data/World/`
 
-**`zone`** — `Data/Zones/zone.csv`
+**`zone`** — зоны мира: спавн, кусты, погода
 
 | Поле | Описание |
 |---|---|
@@ -505,7 +505,7 @@ erDiagram
 
 *Заметки: **конфиг в CSV, геометрия — volume-актор в уровне со ссылкой `zone_id`** (№6).*
 
-**`zone_spawn`** — `Data/Zones/zone_spawn.csv`
+**`zone_spawn`** — спавн видов в зонах
 
 | Поле | Описание |
 |---|---|
@@ -522,7 +522,7 @@ erDiagram
 
 *Заметки: условия — `Rules/conditions` (owner=строка); **легендарные = те же строки**: `legendary=1`, `despawnable=0`, условия появления (GDD).*
 
-**`zone_encounter`** — `Data/Zones/zone_encounter.csv`
+**`zone_encounter`** — случайные встречи в кустах
 
 | Поле | Описание |
 |---|---|
@@ -535,7 +535,7 @@ erDiagram
 
 *Заметки: «кусты» — случайные нападения; условия — `Rules/conditions` (owner=строка).*
 
-**`zone_weather`** — `Data/Zones/zone_weather.csv`
+**`zone_weather`** — погодный режим зон
 
 | Поле | Описание |
 |---|---|
@@ -547,7 +547,7 @@ erDiagram
 
 *Заметки: вручную настраиваемые диапазоны и интервалы (GDD).*
 
-**`weather`** — `Data/Zones/weather.csv`
+**`weather`** — типы погоды в мире
 
 | Поле | Описание |
 |---|---|
@@ -558,7 +558,7 @@ erDiagram
 
 *Заметки: боевые/мир-эффекты — `Rules/effects` (owner=weather).*
 
-**`time_of_day`** — `Data/World/time_of_day.csv`
+**`time_of_day`** — смена времён суток в мире
 
 | Поле | Описание |
 |---|---|
@@ -568,7 +568,7 @@ erDiagram
 
 *Заметки: глобальные интервалы — в `Balance`; условие `time_of_day` читает отсюда.*
 
-**`teleport`** — `Data/World/teleport.csv`
+**`teleport`** — перемещения: навыки покемонов и транспорт
 
 | Поле | Описание |
 |---|---|
@@ -581,7 +581,7 @@ erDiagram
 
 *Заметки: корабли/поезда = kind=object с маршрутом; навык покемона = `ability(usable_out_of_battle, effect=teleport)` (GDD).*
 
-**`map_marker`** — `Data/World/map_marker.csv`
+**`map_marker`** — метки схематичной карты мира
 
 | Поле | Описание |
 |---|---|
@@ -594,7 +594,7 @@ erDiagram
 
 ### G. `Data/NPCs/` и `Data/Quests/`
 
-**`npc`** — `Data/NPCs/npc.csv`
+**`npc`** — персонажи мира и их взаимодействия
 
 | Поле | Описание |
 |---|---|
@@ -611,7 +611,7 @@ erDiagram
 
 *Заметки: **набор** взаимодействий одновременно (talk/battle/trade/quest — не один enum); подсветка иконкой ✓ GDD; placement — anchor в уровне.*
 
-**`dialogue_node`** — `Data/NPCs/dialogue_node.csv`
+**`dialogue_node`** — реплики и ветвление диалогов
 
 | Поле | Описание |
 |---|---|
@@ -624,7 +624,7 @@ erDiagram
 
 *Заметки: реплики вручную + ветвление; условие/квест-триггер — `Rules/conditions` (owner=node).*
 
-**`shop_stock`** — `Data/NPCs/shop_stock.csv`
+**`shop_stock`** — товары на полках магазинов
 
 | Поле | Описание |
 |---|---|
@@ -634,7 +634,7 @@ erDiagram
 
 *Заметки: условия появления позиции — `Rules/conditions` (owner=строка).*
 
-**`trainer_group`** — `Data/NPCs/trainer_group.csv`
+**`trainer_group`** — шаблоны команд тренеров
 
 | Поле | Описание |
 |---|---|
@@ -644,7 +644,7 @@ erDiagram
 
 *Заметки: команда-шаблон: NPC и генеративные турниры используют один механизм.*
 
-**`trainer_team`** — `Data/NPCs/trainer_team.csv`
+**`trainer_team`** — состав команды тренера: слоты и бойцы
 
 | Поле | Описание |
 |---|---|
@@ -660,7 +660,7 @@ erDiagram
 
 *Заметки: списки — редний контент, валидатор проверяет каждый id.*
 
-**`trainer_rules`** — `Data/NPCs/trainer_rules.csv`
+**`trainer_rules`** — ограничения боёв тренеров
 
 | Поле | Описание |
 |---|---|
@@ -671,7 +671,7 @@ erDiagram
 
 *Заметки: ограничения боя выставляются вручную (GDD); награды = `reward` (owner=rules).*
 
-**`quest`** — `Data/Quests/quest.csv`
+**`quest`** — квесты: типы, выдача, повторы
 
 | Поле | Описание |
 |---|---|
@@ -686,7 +686,7 @@ erDiagram
 
 *Заметки: **1 NPC → много квестов**; условия — conditions (owner=quest); награды — reward (owner=quest).*
 
-**`quest_stage`** — `Data/Quests/quest_stage.csv`
+**`quest_stage`** — этапы квестов
 
 | Поле | Описание |
 |---|---|
@@ -694,7 +694,7 @@ erDiagram
 | `quest_id` (FK, string) | квест |
 | `seq` (int) | порядок этапа |
 
-**`quest_objective`** — `Data/Quests/quest_objective.csv`
+**`quest_objective`** — цели этапов квестов
 
 | Поле | Описание |
 |---|---|
@@ -706,7 +706,7 @@ erDiagram
 
 *Заметки: случайные переменные daily/weekly — через `template_params` + пул вида/типа (GDD).*
 
-**`reward`** — `Data/Quests/reward.csv`
+**`reward`** — универсальные награды: квесты, NPC, события
 
 | Поле | Описание |
 |---|---|
@@ -722,7 +722,7 @@ erDiagram
 
 ### H. `Data/Activities/`
 
-**`tournament_config`** — `Data/Activities/tournament_config.csv`
+**`tournament_config`** — конфигурация генеративных турниров
 
 | Поле | Описание |
 |---|---|
@@ -733,7 +733,7 @@ erDiagram
 
 *Заметки: цепочка тренеров из `trainer_group` (пулы); награды = reward (owner=config) — **место под WIP «Награды»**.*
 
-**`roguelike_cave_config`** — `Data/Activities/roguelike_cave_config.csv`
+**`roguelike_cave_config`** — правила процедурных пещер
 
 | Поле | Описание |
 |---|---|
@@ -744,7 +744,7 @@ erDiagram
 
 *Заметки: стартовый пул — строки `roguelike_starter`; награды = reward.*
 
-**`roguelike_starter`** — `Data/Activities/roguelike_starter.csv`
+**`roguelike_starter`** — пул стартовых существ в пещере
 
 | Поле | Описание |
 |---|---|
@@ -754,7 +754,7 @@ erDiagram
 
 *Заметки: «выбор из одного случайного покемона» (GDD).*
 
-**`contest_config`** — `Data/Activities/contest_config.csv`
+**`contest_config`** — конфигурация конкурсов
 
 | Поле | Описание |
 |---|---|
@@ -765,7 +765,7 @@ erDiagram
 
 *Заметки: **WIP** (реакционная механика).*
 
-**`minigame`** — `Data/Activities/minigame.csv`
+**`minigame`** — общие мини-игры: реакция и крафт
 
 | Поле | Описание |
 |---|---|
@@ -776,7 +776,7 @@ erDiagram
 
 *Заметки: **WIP**; общий для крафта и конкурса.*
 
-**`achievement`** — `Data/Activities/achievement.csv`
+**`achievement`** — достижения: категории и очки
 
 | Поле | Описание |
 |---|---|
@@ -788,7 +788,7 @@ erDiagram
 
 *Заметки: условия — conditions (owner=achievement); награды — reward (item/постоянный эффект ✓ GDD).*
 
-**`event`** — `Data/Activities/event.csv`
+**`event`** — временные события игры
 
 | Поле | Описание |
 |---|---|
@@ -803,7 +803,7 @@ erDiagram
 
 ### R. `Data/Rules/` — универсальные механизмы (решение №2)
 
-**`condition`** — `Data/Rules/condition.csv`
+**`condition`** — универсальные условия для любых владельцев
 
 | Поле | Описание |
 |---|---|
@@ -816,7 +816,7 @@ erDiagram
 
 *Заметки: типы: `level_ge`, `time_of_day`, `weather_is`, `friendship_ge`, `has_item`, `quest_done`, `species_defeated`, `ability_used_n_times`, `species_in_set`, … **новый WIP = новый тип, не миграция**.*
 
-**`effect`** — `Data/Rules/effect.csv`
+**`effect`** — универсальные эффекты для любых владельцев
 
 | Поле | Описание |
 |---|---|
