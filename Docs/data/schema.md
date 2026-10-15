@@ -173,108 +173,663 @@ erDiagram
 
 ## 3. Спецификация таблиц
 
-Обозначения: `(PK)` — часть первичного ключа, `(FK)` — ссылка на ID другой таблицы.
-`name_key`/`desc_key` — ключи в `Meta/loc.csv` (решение №5).
+Каждая таблица = заголовок «имя + путь к CSV», ниже — **по одной строке на поле**:
+колонка «Поле» (имя, `(PK)`/`(FK)`, тип; `?` — может быть пустым, `a\|b\|c` — enum)
+и колонка «Описание» — для чего поле. Системная информация по всей таблице —
+в «Заметках» под ней. `name_key`/`desc_key` — ключи в `Meta/loc.csv` (решение №5).
 
 ### A. `Data/Types/` и `Data/Battle/`
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `type` | `type_id (PK)`, `name_key`, `color (hex)`, `tags` | 12 типов (GDD) |
-| `type_chart` | `attacker_type_id (PK,FK)`, `defender_type_id (PK,FK)`, `multiplier` | **полная сетка 12×12 = 144 строки** (№3); до 2 типов у существа → итог = произведение двух строк; значения 0/0.25/0.5/1/2/4 |
-| `status` | `status_id (PK)`, `name_key`, `battle_duration`, `persists_after_battle (bool)`, `cure_method`, `tags` | эффекты статуса — строки `Rules/effects` (owner=status); «не проходит после боя» ✓ GDD |
-| `nature` | `nature_id (PK)`, `name_key`, `anim_profile`, `aggro_mod`, `flee_mod`, `chase_time_mod`, `herd (bool)`, `sleeps (bool)`, `tags` | характер **не влияет на статы** (GDD) — только поведение/анимации |
+**`type`** — `Data/Types/type.csv`
+
+| Поле | Описание |
+|---|---|
+| `type_id` (PK, string) | стабильный ID типа (`type.fire`) |
+| `name_key` (FK, string) | ключ локализации названия |
+| `color` (hex) | цвет типа для UI |
+| `tags` (tags) | флаги под будущие правила без миграции |
+
+*Заметки: 12 типов (GDD).*
+
+**`type_chart`** — `Data/Types/type_chart.csv`
+
+| Поле | Описание |
+|---|---|
+| `attacker_type_id` (PK, FK, string) | тип-нападающий |
+| `defender_type_id` (PK, FK, string) | тип-защищающийся |
+| `multiplier` (float) | множитель урона: 0 / 0.25 / 0.5 / 1 / 2 / 4 |
+
+*Заметки: **полная сетка 12×12 = 144 строки** (№3); до 2 типов у существа → итог = произведение двух строк.*
+
+**`status`** — `Data/Battle/status.csv`
+
+| Поле | Описание |
+|---|---|
+| `status_id` (PK, string) | стабильный ID статуса |
+| `name_key` (FK, string) | ключ локализации названия |
+| `battle_duration` (int) | длительность в ходах боя |
+| `persists_after_battle` (bool) | не проходит после боя |
+| `cure_method` (string) | чем снимается (действие/предмет) |
+| `tags` (tags) | флаги |
+
+*Заметки: эффекты статуса — строки `Rules/effects` (owner=status); «не проходит после боя» ✓ GDD.*
+
+**`nature`** — `Data/Battle/nature.csv`
+
+| Поле | Описание |
+|---|---|
+| `nature_id` (PK, string) | стабильный ID характера |
+| `name_key` (FK, string) | ключ локализации названия |
+| `anim_profile` (string) | профиль анимаций поведения |
+| `aggro_mod` (float) | множитель агрессии |
+| `flee_mod` (float) | множитель стремления к побегу |
+| `chase_time_mod` (float) | множитель времени погони |
+| `herd` (bool) | живёт стадом |
+| `sleeps` (bool) | спит по времени суток |
+| `tags` (tags) | флаги |
+
+*Заметки: характер **не влияет на статы** (GDD) — только поведение/анимации.*
 
 ### B. `Data/Abilities/`
 
 Термин **Ability** (решение №10; рус. «способность» — термин GDD).
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `ability` | `ability_id (PK)`, `name_key`, `desc_key`, `type_id (FK)`, `kind (physical\|energy)`, `power`, `accuracy`, `cooldown_turns`, `cast_turns`, `recovery_turns`, `target_scope (self\|ally\|enemy\|selectable)`, `usable_out_of_battle (bool)`, `formula_ref`, `tags` | GDD: тип у каждой атаки один, всегда есть; ≤5 одновременно у покемона, переучивание — runtime. Побочные эффекты, шанс промаха, отложенные эффекты, применение вне боя = строки `Rules/effects` (owner=ability) + колонки выше. **Требования изучения** = `Rules/conditions` (owner=ability) — отдельно от learnset вида (восстановлено после разбора чужой схемы) |
+**`ability`** — `Data/Abilities/ability.csv`
+
+| Поле | Описание |
+|---|---|
+| `ability_id` (PK, string) | стабильный ID способности (`ability.flamethrower`) |
+| `name_key` (FK, string) | ключ локализации названия |
+| `desc_key` (FK, string) | ключ локализации описания |
+| `type_id` (FK, string) | тип способности (всегда один) |
+| `kind` (enum physical\|energy) | физический или энергетический урон |
+| `power` (int) | сила (урон) |
+| `accuracy` (int) | шанс попадания, % |
+| `cooldown_turns` (int) | перезарядка, ходов |
+| `cast_turns` (int) | время применения, ходов |
+| `recovery_turns` (int) | время восстановления после применения, ходов |
+| `target_scope` (enum self\|ally\|enemy\|selectable) | область применения |
+| `usable_out_of_battle` (bool) | можно применять вне боя |
+| `formula_ref` (string) | ссылка на формулу C++ (принцип 6) |
+| `tags` (tags) | флаги |
+
+*Заметки: GDD: тип у каждой атаки один, всегда есть; ≤5 одновременно у покемона, переучивание — runtime. Побочные эффекты, шанс промаха, отложенные эффекты, применение вне боя = строки `Rules/effects` (owner=ability) + колонки выше. **Требования изучения** = `Rules/conditions` (owner=ability) — отдельно от learnset вида (восстановлено после разбора чужой схемы).*
 
 ### C. `Data/Species/` (+ подпапки)
 
 Хаб + child-таблицы (решение №7).
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `species` | `species_id (PK)`, `name_key`, `desc_key`, `type1_id (FK)`, `type2_id (FK?)`, `gender_ratio (float?; null = бесполые)`, `base_catch_rate (int)`, `capture_difficulty (float)`, `size_min`, `size_max`, `base_tint (hex)`, `mutation_slots_max (int)`, `aggro_radius`, `flee_radius`, `herd (bool)`, `sleep_by_time (bool)`, `legendary (bool)`, `rideable (bool)`, `ride_speed (float?)`, `base_friendship (int)`, `model_path`, `skeleton_path`, `anim_path`, `tags` | дефолты поведения; зона может их переопределить (GDD) |
-| `species_stat_range` | `species_id (PK,FK)`, `stat (PK: hp\|attack\|defense\|sp_attack\|sp_defense\|speed)`, `min`, `max`, `growth_weight` | EAV-строки: диапазоны вида + пул очков; формула от уровня — C++ (принцип 6) |
-| `species_learnset` | `species_id (PK,FK)`, `ability_id (PK,FK)`, `method (level\|tutor\|event)`, `level?` | «у каждого вида свой диапазон навыков»; условия вхождения — `Rules/conditions` (owner=строка learnset) |
-| `evolution` | `evolution_id (PK)`, `from_species_id (FK)`, `to_species_id (FK)`, `branch_order (int)` | «ИЛИ» = несколько строк от одного from; **критерии** (уровень, время суток, дружба, предмет, счётчики, победы…) = `Rules/conditions` (owner=evolution); жёсткий список to ✓ GDD |
-| `mutation` | `mutation_id (PK)`, `name_key`, `affected_parts[]`, `visual_ref`, `hidden (bool)`, `tags` | стат-модификаторы — `Rules/effects` (owner=mutation); `hidden` — скрытые мутации из WIP-размножения |
-| `Species/Mutations/species_mutation` | `species_id (PK,FK)`, `mutation_id (PK,FK)`, `weight?` | допустимый набор мутаций вида; лимит — `species.mutation_slots_max` |
-| `Species/Pigments/species_pigment` | `species_id (PK,FK)`, `tint_min (hex)`, `tint_max (hex)`, `texture_ref?` | базовый оттенок — `species.base_tint` |
-| `species_cosmetic` | `species_id (PK,FK)`, `slot_id (PK,FK → Meta/cosmetic_slot)` | разблокированные слоты вида |
-| `species_food` | `species_id (PK,FK)`, `item_id (PK,FK)`, `preference (int)` | предпочтения по еде |
-| `species_breeding` | `species_id (PK,FK)` | **таблица-владелец**: строки `Rules/conditions` (owner=`breeding:<species>`) хранят ограничения на партнёра (GDD) |
-| `alt_art` | `alt_art_id (PK)`, `species_id (FK)`, `model_ref`, `texture_ref`, `acquisition (event:<id>\|rule)` | альт-арт/временные события; **слот под мега-эволюции/формы (WIP)** |
+**`species`** — `Data/Species/species.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, string) | стабильный ID вида (`species.bulbasaur`) |
+| `name_key` (FK, string) | ключ локализации имени |
+| `desc_key` (FK, string) | ключ локализации описания |
+| `type1_id` (FK, string) | первый тип (обязателен) |
+| `type2_id` (FK?, string) | второй тип; пусто = монотип |
+| `gender_ratio` (float?) | доля женских особей; null = бесполые |
+| `base_catch_rate` (int) | базовый шанс поимки |
+| `capture_difficulty` (float) | сложность поимки (вход в формулу) |
+| `size_min` (float) | минимальный размер особи |
+| `size_max` (float) | максимальный размер особи |
+| `base_tint` (hex) | базовый оттенок (его переопределяет зона) |
+| `mutation_slots_max` (int) | максимум одновременных мутаций |
+| `aggro_radius` (float) | радиус агрессии |
+| `flee_radius` (float) | радиус побега |
+| `herd` (bool) | живёт стадом (дефолт) |
+| `sleep_by_time` (bool) | спит по времени суток (дефолт) |
+| `legendary` (bool) | легендарный вид |
+| `rideable` (bool) | можно ездить верхом |
+| `ride_speed` (float?) | скорость верховой езды |
+| `base_friendship` (int) | стартовое значение дружбы |
+| `model_path` (string) | путь к мешу в `Content/` |
+| `skeleton_path` (string) | путь к скелету в `Content/` |
+| `anim_path` (string) | путь к анимационному набору в `Content/` |
+| `tags` (tags) | флаги |
+
+*Заметки: дефолты поведения; зона может их переопределить (GDD).*
+
+**`species_stat_range`** — `Data/Species/species_stat_range.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, FK, string) | вид |
+| `stat` (PK, enum hp\|attack\|defense\|sp_attack\|sp_defense\|speed) | какой стат описывают границы |
+| `min` (int) | нижняя граница прокрутки базового значения |
+| `max` (int) | верхняя граница прокрутки базового значения |
+| `growth_weight` (float) | вес роста стата в пуле очков |
+
+*Заметки: EAV-строки: диапазоны вида + пул очков; формула от уровня — C++ (принцип 6).*
+
+**`species_learnset`** — `Data/Species/species_learnset.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, FK, string) | вид |
+| `ability_id` (PK, FK, string) | изучаемая способность |
+| `method` (enum level\|tutor\|event) | как изучается |
+| `level?` (int) | уровень изучения при `method=level` |
+
+*Заметки: «у каждого вида свой диапазон навыков»; условия вхождения — `Rules/conditions` (owner=строка learnset).*
+
+**`evolution`** — `Data/Species/evolution.csv`
+
+| Поле | Описание |
+|---|---|
+| `evolution_id` (PK, string) | стабильный ID эволюции |
+| `from_species_id` (FK, string) | исходный вид |
+| `to_species_id` (FK, string) | вид-результат |
+| `branch_order` (int) | порядок ветвления при нескольких вариантах |
+
+*Заметки: «ИЛИ» = несколько строк от одного from; **критерии** (уровень, время суток, дружба, предмет, счётчики, победы…) = `Rules/conditions` (owner=evolution); жёсткий список to ✓ GDD.*
+
+**`mutation`** — `Data/Species/Mutations/mutation.csv`
+
+| Поле | Описание |
+|---|---|
+| `mutation_id` (PK, string) | стабильный ID мутации |
+| `name_key` (FK, string) | ключ локализации названия |
+| `affected_parts[]` (string list) | какие части тела затрагивает |
+| `visual_ref` (string) | ссылка на визуальный ассет |
+| `hidden` (bool) | скрытая (не показывать до WIP-размножения) |
+| `tags` (tags) | флаги |
+
+*Заметки: стат-модификаторы — `Rules/effects` (owner=mutation); `hidden` — скрытые мутации из WIP-размножения.*
+
+**`species_mutation`** — `Data/Species/Mutations/species_mutation.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, FK, string) | вид |
+| `mutation_id` (PK, FK, string) | допустимая мутация |
+| `weight?` (float) | вес выпадения при генерации |
+
+*Заметки: допустимый набор мутаций вида; лимит — `species.mutation_slots_max`.*
+
+**`species_pigment`** — `Data/Species/Pigments/species_pigment.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, FK, string) | вид |
+| `tint_min` (hex) | нижняя граница оттенка |
+| `tint_max` (hex) | верхняя граница оттенка |
+| `texture_ref?` (string) | свой текстура поверх оттенка |
+
+*Заметки: базовый оттенок — `species.base_tint`.*
+
+**`species_cosmetic`** — `Data/Species/species_cosmetic.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, FK, string) | вид |
+| `slot_id` (PK, FK → `Meta/cosmetic_slot`) | разблокированный слот внешности |
+
+*Заметки: разблокированные слоты вида.*
+
+**`species_food`** — `Data/Species/species_food.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, FK, string) | вид |
+| `item_id` (PK, FK, string) | съедобный предмет |
+| `preference` (int) | приоритет поедания (больше = предпочтительнее) |
+
+*Заметки: предпочтения по еде.*
+
+**`species_breeding`** — `Data/Species/species_breeding.csv`
+
+| Поле | Описание |
+|---|---|
+| `species_id` (PK, FK, string) | вид-владелец правил размножения |
+
+*Заметки: **таблица-владелец**: строки `Rules/conditions` (owner=`breeding:<species>`) хранят ограничения на партнёра (GDD).*
+
+**`alt_art`** — `Data/Species/alt_art.csv`
+
+| Поле | Описание |
+|---|---|
+| `alt_art_id` (PK, string) | стабильный ID варианта |
+| `species_id` (FK, string) | базовый вид |
+| `model_ref` (string) | ссылка на модель |
+| `texture_ref` (string) | ссылка на текстуру |
+| `acquisition` (string) | способ получения: `event:<id>` или `rule` |
+
+*Заметки: альт-арт/временные события; **слот под мега-эволюции/формы (WIP)**.*
 
 ### D. `Data/Items/`
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `item` | `item_id (PK)`, `name_key`, `desc_key`, `category (consumable\|pokeball\|stone\|quest\|drop\|material\|cosmetic)`, `price (int)`, `stackable (bool)`, `max_stack`, `sellable (bool)`, `icon_ref`, `tags` | **одна цена на покупку и продажу** (GDD), одинаковая для всех NPC; квестовые (`quest`) нельзя продать — валидатор проверяет `sellable=0`; эффекты (зелья/ягоды/покеболы→capture_bonus/камни→trigger_evolution/косметика→equip_slot) = `Rules/effects` (owner=item) |
-| `craft_recipe` | `recipe_id (PK)`, `result_item_id (FK)`, `result_count`, `minigame_id (FK)`, `tags` | разблокировка — `Rules/conditions` (owner=recipe); эпик крафта — отдельный слой (GDD) |
-| `recipe_ingredient` | `recipe_id (PK,FK)`, `item_id (PK,FK)`, `count` | |
+**`item`** — `Data/Items/item.csv`
+
+| Поле | Описание |
+|---|---|
+| `item_id` (PK, string) | стабильный ID предмета |
+| `name_key` (FK, string) | ключ локализации имени |
+| `desc_key` (FK, string) | ключ локализации описания |
+| `category` (enum consumable\|pokeball\|stone\|quest\|drop\|material\|cosmetic) | категория предмета |
+| `price` (int) | цена (одинаковая на покупку и продажу) |
+| `stackable` (bool) | стекуется |
+| `max_stack` (int) | максимум в стеке |
+| `sellable` (bool) | можно продать |
+| `icon_ref` (string) | путь к иконке в `Content/` |
+| `tags` (tags) | флаги |
+
+*Заметки: **одна цена на покупку и продажу** (GDD), одинаковая для всех NPC; квестовые (`quest`) нельзя продать — валидатор проверяет `sellable=0`; эффекты (зелья/ягоды/покеболы→capture_bonus/камни→trigger_evolution/косметика→equip_slot) = `Rules/effects` (owner=item).*
+
+**`craft_recipe`** — `Data/Items/craft_recipe.csv`
+
+| Поле | Описание |
+|---|---|
+| `recipe_id` (PK, string) | стабильный ID рецепта |
+| `result_item_id` (FK, string) | что создаётся |
+| `result_count` (int) | сколько штук создаётся |
+| `minigame_id` (FK, string) | мини-игра крафта (контент WIP) |
+| `tags` (tags) | флаги |
+
+*Заметки: разблокировка — `Rules/conditions` (owner=recipe); эпик крафта — отдельный слой (GDD).*
+
+**`recipe_ingredient`** — `Data/Items/recipe_ingredient.csv`
+
+| Поле | Описание |
+|---|---|
+| `recipe_id` (PK, FK, string) | рецепт |
+| `item_id` (PK, FK, string) | ингредиент |
+| `count` (int) | сколько единиц нужно |
 
 ### E. `Data/Meta/` и `Data/Balance/`
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `Balance/gameplay_config` | `key (PK)`, `value`, `comment` | константы: `party_size=6`, `ability_slots_max=5`, `active_creatures_max=2`, дистанции деспавна, параметры формул, коэффициенты поимки (правка без пересборки, принцип 6) |
-| `Meta/currency` | `currency_id (PK)`, `name_key`, `icon_ref`, `tags` | «деньги и прочие валюты» (GDD) |
-| `Meta/appearance_option` | `option_id (PK)`, `category (hair\|eyes\|face\|makeup\|body)`, `visual_ref`, `gender?`, `tags` | каталог вариантов внешности игрока и NPC |
-| `Meta/cosmetic_slot` | `slot_id (PK)`, `domain (character\|creature)`, `sort` | фиксированные списки слотов из GDD (персонаж 12, покемон 6) |
-| `Meta/loc` | `key (PK)`, `ru`, `en?` | отдельный слой локализации (№5) |
+**`gameplay_config`** — `Data/Balance/gameplay_config.csv`
+
+| Поле | Описание |
+|---|---|
+| `key` (PK, string) | имя константы |
+| `value` (string) | значение (типизируется при чтении) |
+| `comment` (string) | пояснение к константе |
+
+*Заметки: константы: `party_size=6`, `ability_slots_max=5`, `active_creatures_max=2`, дистанции деспавна, параметры формул, коэффициенты поимки (правка без пересборки, принцип 6).*
+
+**`currency`** — `Data/Meta/currency.csv`
+
+| Поле | Описание |
+|---|---|
+| `currency_id` (PK, string) | стабильный ID валюты |
+| `name_key` (FK, string) | ключ локализации названия |
+| `icon_ref` (string) | путь к иконке |
+| `tags` (tags) | флаги |
+
+*Заметки: «деньги и прочие валюты» (GDD).*
+
+**`appearance_option`** — `Data/Meta/appearance_option.csv`
+
+| Поле | Описание |
+|---|---|
+| `option_id` (PK, string) | стабильный ID варианта |
+| `category` (enum hair\|eyes\|face\|makeup\|body) | часть внешности |
+| `visual_ref` (string) | ссылка на ассет |
+| `gender?` (enum male\|female) | ограничение по полу; пусто = оба |
+| `tags` (tags) | флаги |
+
+*Заметки: каталог вариантов внешности игрока и NPC.*
+
+**`cosmetic_slot`** — `Data/Meta/cosmetic_slot.csv`
+
+| Поле | Описание |
+|---|---|
+| `slot_id` (PK, string) | стабильный ID слота |
+| `domain` (enum character\|creature) | слот персонажа или покемона |
+| `sort` (int) | порядок отображения |
+
+*Заметки: фиксированные списки слотов из GDD (персонаж 12, покемон 6).*
+
+**`loc`** — `Data/Meta/loc.csv`
+
+| Поле | Описание |
+|---|---|
+| `key` (PK, string) | ключ строки локализации |
+| `ru` (string) | русский текст (язык дизайна) |
+| `en?` (string) | английский; пусто = не переведено |
+
+*Заметки: отдельный слой локализации (№5).*
 
 ### F. `Data/Zones/` и `Data/World/`
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `zone` | `zone_id (PK)`, `name_key`, `kind (spawn\|encounter\|weather\|mixed)`, `overrides (напр. override_tint)`, `tags` | **конфиг в CSV, геометрия — volume-актор в уровне со ссылкой `zone_id`** (№6) |
-| `zone_spawn` | `row_id (PK)`, `zone_id (FK)`, `species_id (FK)`, `weight`, `max_simultaneous`, `despawn_distance`, `despawn_time`, `legendary (bool)`, `despawnable (bool)`, `override_tint?` | условия — `Rules/conditions` (owner=строка); **легендарные = те же строки**: `legendary=1`, `despawnable=0`, условия появления (GDD) |
-| `zone_encounter` | `row_id (PK)`, `zone_id (FK)`, `species_id (FK)`, `level_min`, `level_max`, `weight` | «кусты» — случайные нападения; условия — `Rules/conditions` |
-| `zone_weather` | `zone_id (PK,FK)`, `weather_id (PK,FK)`, `interval_min_s`, `interval_max_s`, `weight` | вручную настраиваемые диапазоны и интервалы (GDD) |
-| `weather` | `weather_id (PK)`, `name_key`, `vfx_ref`, `tags` | боевые/мир-эффекты — `Rules/effects` (owner=weather) |
-| `World/time_of_day` | `phase_id (PK)`, `duration_s`, `light_preset` | глобальные интервалы — в `Balance`; условие `time_of_day` читает отсюда |
-| `World/teleport` | `teleport_id (PK)`, `kind (skill\|object)`, `from_anchor`, `to_anchor`, `route_ref?`, `tags` | корабли/поезда = kind=object с маршрутом; навык покемона = `ability(usable_out_of_battle, effect=teleport)` (GDD) |
-| `World/map_marker` | `marker_id (PK)`, `type`, `anchor`, `label_key` | схематичная карта мира, без миникарты (GDD) |
+**`zone`** — `Data/Zones/zone.csv`
+
+| Поле | Описание |
+|---|---|
+| `zone_id` (PK, string) | стабильный ID зоны (`zone.route01_grass`) |
+| `name_key` (FK, string) | ключ локализации названия |
+| `kind` (enum spawn\|encounter\|weather\|mixed) | роль зоны |
+| `overrides` (string) | какие дефолты вида переопределяет (напр. `override_tint`) |
+| `tags` (tags) | флаги |
+
+*Заметки: **конфиг в CSV, геометрия — volume-актор в уровне со ссылкой `zone_id`** (№6).*
+
+**`zone_spawn`** — `Data/Zones/zone_spawn.csv`
+
+| Поле | Описание |
+|---|---|
+| `row_id` (PK, string) | стабильный ID строки спавна |
+| `zone_id` (FK, string) | зона |
+| `species_id` (FK, string) | вид |
+| `weight` (int) | вес выпадения при генерации спавна |
+| `max_simultaneous` (int) | максимум особей одновременно |
+| `despawn_distance` (float) | дистанция деспавна |
+| `despawn_time` (float) | время жизни особи, с |
+| `legendary` (bool) | легендарная строка спавна |
+| `despawnable` (bool) | исчезает ли особь |
+| `override_tint?` (hex) | переопределение оттенка вида в зоне |
+
+*Заметки: условия — `Rules/conditions` (owner=строка); **легендарные = те же строки**: `legendary=1`, `despawnable=0`, условия появления (GDD).*
+
+**`zone_encounter`** — `Data/Zones/zone_encounter.csv`
+
+| Поле | Описание |
+|---|---|
+| `row_id` (PK, string) | стабильный ID строки |
+| `zone_id` (FK, string) | зона |
+| `species_id` (FK, string) | вид |
+| `level_min` (int) | минимальный уровень |
+| `level_max` (int) | максимальный уровень |
+| `weight` (int) | вес выпадения |
+
+*Заметки: «кусты» — случайные нападения; условия — `Rules/conditions` (owner=строка).*
+
+**`zone_weather`** — `Data/Zones/zone_weather.csv`
+
+| Поле | Описание |
+|---|---|
+| `zone_id` (PK, FK, string) | зона |
+| `weather_id` (PK, FK, string) | допустимая погода |
+| `interval_min_s` (int) | минимальный интервал, с |
+| `interval_max_s` (int) | максимальный интервал, с |
+| `weight` (int) | вес выпадения |
+
+*Заметки: вручную настраиваемые диапазоны и интервалы (GDD).*
+
+**`weather`** — `Data/Zones/weather.csv`
+
+| Поле | Описание |
+|---|---|
+| `weather_id` (PK, string) | стабильный ID погоды |
+| `name_key` (FK, string) | ключ локализации названия |
+| `vfx_ref` (string) | ссылка на VFX-эффект |
+| `tags` (tags) | флаги |
+
+*Заметки: боевые/мир-эффекты — `Rules/effects` (owner=weather).*
+
+**`time_of_day`** — `Data/World/time_of_day.csv`
+
+| Поле | Описание |
+|---|---|
+| `phase_id` (PK, string) | стабильный ID фазы |
+| `duration_s` (int) | длительность фазы, с |
+| `light_preset` (string) | пресет освещения |
+
+*Заметки: глобальные интервалы — в `Balance`; условие `time_of_day` читает отсюда.*
+
+**`teleport`** — `Data/World/teleport.csv`
+
+| Поле | Описание |
+|---|---|
+| `teleport_id` (PK, string) | стабильный ID телепорта |
+| `kind` (enum skill\|object) | навык покемона или объект мира |
+| `from_anchor` (string) | точка отправления |
+| `to_anchor` (string) | точка прибытия |
+| `route_ref?` (string) | маршрут (для кораблей/поездов) |
+| `tags` (tags) | флаги |
+
+*Заметки: корабли/поезда = kind=object с маршрутом; навык покемона = `ability(usable_out_of_battle, effect=teleport)` (GDD).*
+
+**`map_marker`** — `Data/World/map_marker.csv`
+
+| Поле | Описание |
+|---|---|
+| `marker_id` (PK, string) | стабильный ID метки |
+| `type` (string) | тип метки |
+| `anchor` (string) | привязка в мире |
+| `label_key` (FK, string) | ключ подписи |
+
+*Заметки: схематичная карта мира, без миникарты (GDD).*
 
 ### G. `Data/NPCs/` и `Data/Quests/`
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `npc` | `npc_id (PK)`, `name_key`, `appearance[] (option_id)`, `battle_enabled (bool)`, `battle_cooldown_s`, `battle_group_id (FK trainer_group?)`, `shop_id?`, `dialogue_id?`, `icon_flags`, `tags` | **набор** взаимодействий одновременно (talk/battle/trade/quest — не один enum); подсветка иконкой ✓ GDD; placement — anchor в уровне |
-| `dialogue_node` | `node_id (PK)`, `dialogue_id`, `seq`, `text_key`, `next_node_id?`, `action?` | реплики вручную + ветвление; условие/квест-триггер — `Rules/conditions` (owner=node) |
-| `shop_stock` | `row_id (PK)`, `shop_id`, `item_id (FK)` | условия появления позиции — `Rules/conditions` (owner=строка) |
-| `trainer_group` | `group_id (PK)`, `rules_id (FK trainer_rules)`, `tags` | команда-шаблон: NPC и генеративные турниры используют один механизм |
-| `trainer_team` | `row_id (PK)`, `group_id (FK)`, `slot`, `species_id (FK)`, `level`, `ability_ids[]`, `nature_id?`, `item_id?`, `tags` | списки — редний контент, валидатор проверяет каждый id |
-| `trainer_rules` | `rules_id (PK)`, `max_legendaries`, `level_cap`, `side_count (1..2)` | ограничения боя выставляются вручную (GDD); награды = `reward` (owner=rules) |
-| `quest` | `quest_id (PK)`, `kind (story\|daily\|weekly)`, `repeatable (bool)`, `cooldown_s`, `giver_npc_id (FK?)`, `prereq_quest_ids[]`, `template_params (пулы random-целей)`, `tags` | **1 NPC → много квестов**; условия — conditions (owner=quest); награды — reward (owner=quest) |
-| `quest_stage` | `stage_id (PK)`, `quest_id (FK)`, `seq` | |
-| `quest_objective` | `objective_id (PK)`, `stage_id (FK)`, `type (defeat\|collect\|visit\|talk\|…)`, `target_id`, `count` | случайные переменные daily/weekly — через `template_params` + пул вида/типа (GDD) |
-| `reward` | `row_id (PK)`, `owner_type`, `owner_id`, `reward_type (item\|currency\|achievement\|unlock)`, `target_id`, `count`, `chance` | **общий механизм наград**: квесты, NPC, турниры (WIP-место), залы (WIP), достижения, активности |
+**`npc`** — `Data/NPCs/npc.csv`
+
+| Поле | Описание |
+|---|---|
+| `npc_id` (PK, string) | стабильный ID NPC |
+| `name_key` (FK, string) | ключ локализации имени |
+| `appearance[]` (option_id list) | варианты внешности из каталога |
+| `battle_enabled` (bool) | может ли драться |
+| `battle_cooldown_s` (int) | кулдаун между боями, с |
+| `battle_group_id` (FK?, string) | команда для боя; пусто = без боя |
+| `shop_id?` (FK, string) | его магазин |
+| `dialogue_id?` (FK, string) | его диалог |
+| `icon_flags` (tags) | иконки взаимодействий над NPC |
+| `tags` (tags) | флаги |
+
+*Заметки: **набор** взаимодействий одновременно (talk/battle/trade/quest — не один enum); подсветка иконкой ✓ GDD; placement — anchor в уровне.*
+
+**`dialogue_node`** — `Data/NPCs/dialogue_node.csv`
+
+| Поле | Описание |
+|---|---|
+| `node_id` (PK, string) | стабильный ID реплики |
+| `dialogue_id` (string) | диалог-владелец |
+| `seq` (int) | порядок в линейной части |
+| `text_key` (FK, string) | текст реплики → `Meta/loc` |
+| `next_node_id?` (FK, string) | следующая реплика |
+| `action?` (string) | действие при выборе (магазин, выдать квест) |
+
+*Заметки: реплики вручную + ветвление; условие/квест-триггер — `Rules/conditions` (owner=node).*
+
+**`shop_stock`** — `Data/NPCs/shop_stock.csv`
+
+| Поле | Описание |
+|---|---|
+| `row_id` (PK, string) | стабильный ID строки |
+| `shop_id` (string) | магазин-владелец |
+| `item_id` (FK, string) | товар |
+
+*Заметки: условия появления позиции — `Rules/conditions` (owner=строка).*
+
+**`trainer_group`** — `Data/NPCs/trainer_group.csv`
+
+| Поле | Описание |
+|---|---|
+| `group_id` (PK, string) | стабильный ID группы |
+| `rules_id` (FK → `trainer_rules`) | правила боя |
+| `tags` (tags) | метки для пулов генерации |
+
+*Заметки: команда-шаблон: NPC и генеративные турниры используют один механизм.*
+
+**`trainer_team`** — `Data/NPCs/trainer_team.csv`
+
+| Поле | Описание |
+|---|---|
+| `row_id` (PK, string) | стабильный ID строки |
+| `group_id` (FK, string) | группа |
+| `slot` (int) | номер слота в команде |
+| `species_id` (FK, string) | вид бойца |
+| `level` (int) | уровень бойца |
+| `ability_ids[]` (string list) | изученные способности (≤5) |
+| `nature_id?` (FK, string) | характер |
+| `item_id?` (FK, string) | держимый предмет |
+| `tags` (tags) | флаги |
+
+*Заметки: списки — редний контент, валидатор проверяет каждый id.*
+
+**`trainer_rules`** — `Data/NPCs/trainer_rules.csv`
+
+| Поле | Описание |
+|---|---|
+| `rules_id` (PK, string) | стабильный ID правил |
+| `max_legendaries` (int) | максимум легендарных в команде |
+| `level_cap` (int) | потолок уровня |
+| `side_count` (int 1..2) | число сторон боя |
+
+*Заметки: ограничения боя выставляются вручную (GDD); награды = `reward` (owner=rules).*
+
+**`quest`** — `Data/Quests/quest.csv`
+
+| Поле | Описание |
+|---|---|
+| `quest_id` (PK, string) | стабильный ID квеста |
+| `kind` (enum story\|daily\|weekly) | тип квеста |
+| `repeatable` (bool) | можно ли повторять |
+| `cooldown_s` (int) | кулдаун повтора, с |
+| `giver_npc_id` (FK?, string) | NPC-задатчик; пусто = не от NPC |
+| `prereq_quest_ids[]` (string list) | prerequisite-квесты |
+| `template_params` (string) | пулы random-целей для daily/weekly |
+| `tags` (tags) | флаги |
+
+*Заметки: **1 NPC → много квестов**; условия — conditions (owner=quest); награды — reward (owner=quest).*
+
+**`quest_stage`** — `Data/Quests/quest_stage.csv`
+
+| Поле | Описание |
+|---|---|
+| `stage_id` (PK, string) | стабильный ID этапа |
+| `quest_id` (FK, string) | квест |
+| `seq` (int) | порядок этапа |
+
+**`quest_objective`** — `Data/Quests/quest_objective.csv`
+
+| Поле | Описание |
+|---|---|
+| `objective_id` (PK, string) | стабильный ID цели |
+| `stage_id` (FK, string) | этап |
+| `type` (enum defeat\|collect\|visit\|talk\|…) | тип цели |
+| `target_id` (string) | цель (вид, предмет, NPC, зона…) |
+| `count` (int) | сколько выполнить |
+
+*Заметки: случайные переменные daily/weekly — через `template_params` + пул вида/типа (GDD).*
+
+**`reward`** — `Data/Quests/reward.csv`
+
+| Поле | Описание |
+|---|---|
+| `row_id` (PK, string) | стабильный ID строки награды |
+| `owner_type` (enum, см. §3 R) | домен-владелец |
+| `owner_id` (string) | ID владельца в домене |
+| `reward_type` (enum item\|currency\|achievement\|unlock) | тип награды |
+| `target_id` (string) | что выдаётся |
+| `count` (int) | сколько выдаётся |
+| `chance` (float) | шанс выпадения, 0..1 |
+
+*Заметки: **общий механизм наград**: квесты, NPC, турниры (WIP-место), залы (WIP), достижения, активности.*
 
 ### H. `Data/Activities/`
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `tournament_config` | `config_id (PK)`, `generation_params (число тренеров, level range)`, `rules_id (FK)`, `tags` | цепочка тренеров из `trainer_group` (пулы); награды = reward (owner=config) — **место под WIP «Награды»** |
-| `roguelike_cave_config` | `config_id (PK)`, `path_params`, `keep_rules`, `tags` | стартовый пул — строки `roguelike_starter`; награды = reward |
-| `roguelike_starter` | `config_id (PK,FK)`, `species_id (PK,FK)`, `weight` | «выбор из одного случайного покемона» (GDD) |
-| `contest_config` | `config_id (PK)`, `minigame_id (FK)`, `scoring_params`, `tags` | **WIP** (реакционная механика) |
-| `minigame` | `minigame_id (PK)`, `kind (reaction\|craft)`, `difficulty_ref`, `tags` | **WIP**; общий для крафта и конкурса |
-| `achievement` | `achievement_id (PK)`, `category`, `points`, `hidden (bool)`, `tags` | условия — conditions (owner=achievement); награды — reward (item/постоянный эффект ✓ GDD) |
-| `event` | `event_id (PK)`, `kind`, `start_at`, `end_at`, `content_refs[]`, `tags` | временные события; награды — reward; основной источник альт-артов (GDD) |
+**`tournament_config`** — `Data/Activities/tournament_config.csv`
+
+| Поле | Описание |
+|---|---|
+| `config_id` (PK, string) | стабильный ID конфига |
+| `generation_params` (string) | число тренеров, level range |
+| `rules_id` (FK → `trainer_rules`) | правила боя |
+| `tags` (tags) | метки для пулов |
+
+*Заметки: цепочка тренеров из `trainer_group` (пулы); награды = reward (owner=config) — **место под WIP «Награды»**.*
+
+**`roguelike_cave_config`** — `Data/Activities/roguelike_cave_config.csv`
+
+| Поле | Описание |
+|---|---|
+| `config_id` (PK, string) | стабильный ID конфига |
+| `path_params` (string) | параметры генерации пути |
+| `keep_rules` (string) | что сохраняется между заходами |
+| `tags` (tags) | флаги |
+
+*Заметки: стартовый пул — строки `roguelike_starter`; награды = reward.*
+
+**`roguelike_starter`** — `Data/Activities/roguelike_starter.csv`
+
+| Поле | Описание |
+|---|---|
+| `config_id` (PK, FK, string) | конфиг пещеры |
+| `species_id` (PK, FK, string) | кандидат в стартовые |
+| `weight` (int) | вес выпадения |
+
+*Заметки: «выбор из одного случайного покемона» (GDD).*
+
+**`contest_config`** — `Data/Activities/contest_config.csv`
+
+| Поле | Описание |
+|---|---|
+| `config_id` (PK, string) | стабильный ID конфига |
+| `minigame_id` (FK, string) | мини-игра конкурса |
+| `scoring_params` (string) | параметры подсчёта очков |
+| `tags` (tags) | флаги |
+
+*Заметки: **WIP** (реакционная механика).*
+
+**`minigame`** — `Data/Activities/minigame.csv`
+
+| Поле | Описание |
+|---|---|
+| `minigame_id` (PK, string) | стабильный ID мини-игры |
+| `kind` (enum reaction\|craft) | тип мини-игры |
+| `difficulty_ref` (string) | ссылка на кривую сложности |
+| `tags` (tags) | флаги |
+
+*Заметки: **WIP**; общий для крафта и конкурса.*
+
+**`achievement`** — `Data/Activities/achievement.csv`
+
+| Поле | Описание |
+|---|---|
+| `achievement_id` (PK, string) | стабильный ID достижения |
+| `category` (string) | категория |
+| `points` (int) | очки достижения |
+| `hidden` (bool) | скрыто до выполнения |
+| `tags` (tags) | флаги |
+
+*Заметки: условия — conditions (owner=achievement); награды — reward (item/постоянный эффект ✓ GDD).*
+
+**`event`** — `Data/Activities/event.csv`
+
+| Поле | Описание |
+|---|---|
+| `event_id` (PK, string) | стабильный ID события |
+| `kind` (string) | тип события |
+| `start_at` (string) | время начала |
+| `end_at` (string) | время окончания |
+| `content_refs[]` (string list) | подключаемые контенты события |
+| `tags` (tags) | флаги |
+
+*Заметки: временные события; награды — reward; основной источник альт-артов (GDD).*
 
 ### R. `Data/Rules/` — универсальные механизмы (решение №2)
 
-| Таблица | Колонки | Заметки |
-|---|---|---|
-| `condition` | `row_id (PK)`, `owner_type`, `owner_id`, `condition_type`, `params`, `combine (all\|any, default all)` | типы: `level_ge`, `time_of_day`, `weather_is`, `friendship_ge`, `has_item`, `quest_done`, `species_defeated`, `ability_used_n_times`, `species_in_set`, … **новый WIP = новый тип, не миграция** |
-| `effect` | `row_id (PK)`, `owner_type`, `owner_id`, `effect_type`, `target`, `params`, `chance`, `duration` | типы: `damage` (формула C++), `apply_status`, `modify_stat`, `buff`, `teleport`, `give_item`, `trigger_evolution`, `capture_bonus`, `equip_slot`, `give_achievement`, … |
+**`condition`** — `Data/Rules/condition.csv`
+
+| Поле | Описание |
+|---|---|
+| `row_id` (PK, string) | стабильный ID строки |
+| `owner_type` (enum, см. ниже) | домен-владелец |
+| `owner_id` (string) | ID владельца в домене |
+| `condition_type` (string) | тип условия (`level_ge`, `time_of_day`, …) |
+| `params` (string) | параметры условия |
+| `combine` (enum all\|any, default all) | AND или OR внутри владельца |
+
+*Заметки: типы: `level_ge`, `time_of_day`, `weather_is`, `friendship_ge`, `has_item`, `quest_done`, `species_defeated`, `ability_used_n_times`, `species_in_set`, … **новый WIP = новый тип, не миграция**.*
+
+**`effect`** — `Data/Rules/effect.csv`
+
+| Поле | Описание |
+|---|---|
+| `row_id` (PK, string) | стабильный ID строки |
+| `owner_type` (enum, см. ниже) | домен-владелец |
+| `owner_id` (string) | ID владельца в домене |
+| `effect_type` (string) | тип эффекта (`damage`, `apply_status`, …) |
+| `target` (string) | цель эффекта |
+| `params` (string) | параметры эффекта |
+| `chance` (float) | шанс срабатывания, 0..1 |
+| `duration` (int) | длительность, если применимо |
+
+*Заметки: типы: `damage` (формула C++), `apply_status`, `modify_stat`, `buff`, `teleport`, `give_item`, `trigger_evolution`, `capture_bonus`, `equip_slot`, `give_achievement`, …*
 
 `owner_type` — закрытый список доменов (`species`, `species_learnset`, `evolution`, `ability`,
 `breeding`, `item`, `status`, `mutation`, `weather`, `zone_spawn`, `zone_encounter`,
@@ -371,6 +926,7 @@ Content/
 ## 8. Комментарии на ревью
 
 Редактируй таблицу прямо в этом файле (или комментируй в PR ветки `docs/layer1-data-schema`):
+комментарий к полю — указывай **таблицу и имя поля** (например, `ability.power`).
 
 | # | Комментарий / правка | Статус |
 |---|---|---|
