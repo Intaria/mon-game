@@ -11,5 +11,6 @@ public class MonGameEditorTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V7;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_8;
 		ExtraModuleNames.Add("MonGame");
+		ExtraModuleNames.Add("MonGameData");
 	}
 }
