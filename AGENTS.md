@@ -111,9 +111,8 @@ These are not style preferences; breaking them breaks the workflow.
 - **`Docs/data/schema.md` is the single source of truth for data structure** (ER diagrams,
   table spec, approved decisions). Any change to `Data/`, C++ row structs, or the
   save-game schema **must** update that document in the **same commit** — a schema
-  change without the diagram/spec update is an incomplete commit.
-- Every data record has a stable string ID (namespaced slug, e.g. `species.bulbasaur`);
-  IDs are never reused or repurposed.
+  change without the diagram/spec update is an incomplete commit.- **Data & column naming** (schema.md §5 №14–15): table/file names — **singular** (`ability`, `zone_spawn`; directories — plural); qualifier goes **after** the noun (`catch_rate_base`, `size_min`, `speed_mod`); booleans — `is_`/`has_` (`is_legendary`), verb-shaped booleans stay plain (`persists_after_battle`); time — `_seconds` suffix; PK = `<entity>_id`; non-negative ints are written `uint` in the spec; defaults are declared in `schema.md`, and an empty CSV cell means default.
+- Every data record has a stable string ID (namespaced slug, e.g. `species.bulbasaur`); IDs are never reused or repurposed.
 - CSV/JSON in `Data/` mirrors a C++ `USTRUCT` row type — schema changes touch **both**
   in one commit.
 - Data files are reviewable text: no exported-from-editor blobs, no binary formatting.

@@ -1,6 +1,6 @@
 # Слой 1 — Схема данных: ER-диаграмма и спецификация
 
-> **Статус:** согласовано разработчиком (14.10.2026). Все 13 решений приняты (§5).
+> **Статус:** согласовано разработчиком (14.10.2026); правки ревью 15.10.2026 внесены (§5, №14–22).
 > **Назначение:** единственный источник истины по структуре данных
 > (правило закреплено в `AGENTS.md` §5): любое изменение `Data/`, C++ row-структур
 > или save-схемы обязано сопровождаться правкой этого документа **в том же коммите**.
@@ -17,7 +17,7 @@
    `item.potion_s`, `zone.route01_grass`. Стабильны, не переиспользуются;
    переименование = миграция данных. Синтаксис совпадает с GameplayTags (без расхождений в будущем).
 3. **Универсальные Condition / Effect** вместо таблицы на каждый кейс — строки в
-   `Rules/conditions.csv` и `Rules/effects.csv` с полиморфным владельцем
+   `Rules/condition.csv` и `Rules/effect.csv` с полиморфным владельцем
    (`owner_type` + `owner_id`). Семантика по умолчанию — **AND** (все условия владельца);
    варианты «ИЛИ» — несколько строк-владельцев (например, несколько `evolution` от одного вида).
    Новые WIP-механики покрываются новыми *типами* условий/эффектов, а не миграцией структуры.
@@ -41,18 +41,18 @@
 erDiagram
     TYPE ||--o{ TYPE_CHART : "attacks as"
     TYPE ||--o{ TYPE_CHART : "defends as"
-    ABILITY ||--o{ SPECIES_LEARNSET : "learnable as"
-    SPECIES ||--o{ SPECIES_LEARNSET : "can learn"
+    ABILITY ||--o{ SPECIES_ABILITY : "learnable as"
+    SPECIES ||--o{ SPECIES_ABILITY : "can learn"
     ABILITY ||--o{ CONDITION : "learn requirements"
     ABILITY {
         string ability_id PK
         string type_id FK
         string kind "physical | energy"
-        int cooldown_turns
+        uint cooldown_turns
     }
     TYPE {
         string type_id PK
-        string color
+        string color_key
     }
     TYPE_CHART {
         string attacker_type_id PK
@@ -65,7 +65,7 @@ erDiagram
     }
     NATURE {
         string nature_id PK
-        float aggro_mod
+        string anim_profile
     }
 ```
 
@@ -73,30 +73,29 @@ erDiagram
 
 ```mermaid
 erDiagram
-    SPECIES ||--o{ SPECIES_STAT_RANGE : "stat ranges"
-    SPECIES ||--o{ SPECIES_LEARNSET : "learnset"
+    SPECIES ||--o{ SPECIES_STATS : "stats"
+    SPECIES ||--o{ SPECIES_ABILITY : "learnset"
     SPECIES ||--o{ EVOLUTION : "evolves from"
     SPECIES ||--o{ EVOLUTION : "evolves to"
     EVOLUTION ||--o{ CONDITION : "criteria"
     SPECIES ||--o{ SPECIES_MUTATION : "allows"
     MUTATION ||--o{ SPECIES_MUTATION : "allowed in"
-    SPECIES ||--o{ SPECIES_PIGMENT : "pigment range"
     SPECIES ||--o{ SPECIES_COSMETIC : "unlocks slots"
     SPECIES ||--o{ SPECIES_FOOD : "prefers"
-    ITEM ||--o{ SPECIES_FOOD : "eaten as"
     SPECIES ||--o{ SPECIES_BREEDING : "partner rules"
-    SPECIES ||--o{ ALT_ART : "variants"
+    SPECIES ||--o{ SPECIES_BREEDING_GROUP : "egg groups"
+    SPECIES ||--o{ SPECIES_ART : "variants"
     SPECIES {
         string species_id PK
-        string type1_id FK
-        bool legendary
-        int mutation_slots_max
+        string main_type_id FK
+        bool is_legendary
+        uint mutation_slots_max
     }
     EVOLUTION {
         string evolution_id PK
         string from_species_id FK
         string to_species_id FK
-        int branch_order
+        int sort_order
     }
 ```
 
@@ -105,9 +104,6 @@ erDiagram
 ```mermaid
 erDiagram
     ITEM ||--o{ EFFECT : "has effects"
-    ITEM ||--o{ RECIPE_INGREDIENT : "used as"
-    CRAFT_RECIPE ||--o{ RECIPE_INGREDIENT : "contains"
-    CRAFT_RECIPE }o--o| MINIGAME : "requires"
     ZONE ||--o{ ZONE_SPAWN : "spawns"
     SPECIES ||--o{ ZONE_SPAWN : "spawned here"
     ZONE ||--o{ ZONE_ENCOUNTER : "bush encounters"
@@ -118,12 +114,11 @@ erDiagram
     ZONE {
         string zone_id PK
         string kind
+        uint max_simultaneous
     }
     ZONE_SPAWN {
-        string row_id PK
+        string spawn_id PK
         string species_id FK
-        int max_simultaneous
-        bool legendary
         bool despawnable
     }
 ```
@@ -134,21 +129,20 @@ erDiagram
 
 ```mermaid
 erDiagram
-    NPC ||--o{ DIALOGUE_NODE : "says"
-    NPC ||--o{ SHOP_STOCK : "sells"
+    NPC }o--o{ DIALOGUE : "can talk"
+    DIALOGUE ||--o{ DIALOGUE_NODE : "says"
+    DIALOGUE_NODE ||--o{ DIALOGUE_NODE : "branches to"
+    NPC ||--o{ SHOP : "owns"
+    SHOP ||--o{ SHOP_STOCK : "sells"
     ITEM ||--o{ SHOP_STOCK : "listed"
-    NPC }o--o| TRAINER_GROUP : "battles as"
-    TRAINER_GROUP ||--o{ TRAINER_TEAM : "has member"
-    SPECIES ||--o{ TRAINER_TEAM : "member species"
-    TRAINER_GROUP ||--o| TRAINER_RULES : "follows"
-    QUEST ||--o{ QUEST_STAGE : "stages"
-    QUEST_STAGE ||--o{ QUEST_OBJECTIVE : "objectives"
+    NPC }o--o| BATTLE_GROUP : "battles as"
+    BATTLE_GROUP ||--o{ BATTLE_GROUP_MEMBER : "has member"
+    SPECIES ||--o{ BATTLE_GROUP_MEMBER : "member species"
+    BATTLE_GROUP ||--o| TRAINER_RULES : "follows"
+    QUEST ||--o{ QUEST_OBJECTIVE : "objectives"
     QUEST ||--o{ REWARD : "grants"
     ACHIEVEMENT ||--o{ REWARD : "grants"
-    TOURNAMENT_CONFIG ||--o{ TRAINER_GROUP : "generates"
-    ROGUELIKE_CAVE_CONFIG }o--o{ SPECIES : "starter pool"
-    CONTEST_CONFIG }o--o| MINIGAME : "uses"
-    EVENT ||--o{ ALT_ART : "grants"
+    TOURNAMENT_CONFIG ||--o{ BATTLE_GROUP : "generates"
     CONDITION {
         string owner_type "polymorphic"
         string owner_id
@@ -174,9 +168,12 @@ erDiagram
 ## 3. Спецификация таблиц
 
 Каждая таблица = заголовок «имя + назначение таблицы» (путь к CSV — §6), ниже — **по одной строке на поле**:
-колонка «Поле» (имя, `(PK)`/`(FK)`, тип; `?` — может быть пустым, `a\|b\|c` — enum)
-и колонка «Описание» — для чего поле. Системная информация по всей таблице —
-в «Заметках» под ней. `name_key`/`desc_key` — ключи в `Meta/loc.csv` (решение №5).
+колонка «Поле» (имя, `(PK)`/`(FK)`, тип; `?` — может быть пустым, `a\|b\|c` — enum,
+`uint` — только неотрицательное, `default` — значение по умолчанию (пустая ячейка CSV = default),
+`(uniq)` — уникальная комбинация вне PK) и колонка «Описание» — для чего поле.
+Системная информация по всей таблице — в «Заметках» под ней. `name_key`/`desc_key` —
+ключи в `Meta/locale.csv` (решение №5). Именование таблиц и колонок — правила
+`AGENTS.md` §5 и решения §5 №14–15.
 
 ### A. `Data/Types/` и `Data/Battle/`
 
@@ -186,7 +183,7 @@ erDiagram
 |---|---|
 | `type_id` (PK, string) | стабильный ID типа (`type.fire`) |
 | `name_key` (FK, string) | ключ локализации названия |
-| `color` (hex) | цвет типа для UI |
+| `color_key` (string) | ключ цвета в палитре UI (эталон один, оттенки строит UI) |
 | `tags` (tags) | флаги под будущие правила без миграции |
 
 *Заметки: 12 типов (GDD).*
@@ -207,12 +204,12 @@ erDiagram
 |---|---|
 | `status_id` (PK, string) | стабильный ID статуса |
 | `name_key` (FK, string) | ключ локализации названия |
-| `battle_duration` (int) | длительность в ходах боя |
-| `persists_after_battle` (bool) | не проходит после боя |
-| `cure_method` (string) | чем снимается (действие/предмет) |
+| `duration_turns` (uint, default 0) | сколько ходов длится; 0 = не снимается само (бессрочно) |
+| `persists_after_battle` (bool, default 0) | не проходит после боя |
+| `cure_chance_percent` (uint, default 0) | шанс снятия каждый ход, % |
 | `tags` (tags) | флаги |
 
-*Заметки: эффекты статуса — строки `Rules/effects` (owner=status); «не проходит после боя» ✓ GDD.*
+*Заметки: эффекты статуса — строки `Rules/effect` (owner=status); способы лечения — `Rules/effect` (`cure_status`) на зельях/способностях, отдельный `cure_method` не хранится; «не проходит после боя» ✓ GDD.*
 
 **`nature`** — характеры существ: поведение и анимации
 
@@ -220,19 +217,12 @@ erDiagram
 |---|---|
 | `nature_id` (PK, string) | стабильный ID характера |
 | `name_key` (FK, string) | ключ локализации названия |
-| `anim_profile` (string) | профиль анимаций поведения |
-| `aggro_mod` (float) | множитель агрессии |
-| `flee_mod` (float) | множитель стремления к побегу |
-| `chase_time_mod` (float) | множитель времени погони |
-| `herd` (bool) | живёт стадом |
-| `sleeps` (bool) | спит по времени суток |
+| `anim_profile` (enum default\|angry\|happy\|lazy; пусто = базовый) | профиль анимаций поведения |
 | `tags` (tags) | флаги |
 
-*Заметки: характер **не влияет на статы** (GDD) — только поведение/анимации.*
+*Заметки: характер **не влияет на статы** (GDD); влияние на поведение (`boldness_mod`) — отложено (`99-open-questions` #9); `herd` и сон — свойства вида и зоны, не характера.*
 
 ### B. `Data/Abilities/`
-
-Термин **Ability** (решение №10; рус. «способность» — термин GDD).
 
 **`ability`** — способности существ: боевые атаки и навыки вне боя
 
@@ -243,17 +233,17 @@ erDiagram
 | `desc_key` (FK, string) | ключ локализации описания |
 | `type_id` (FK, string) | тип способности (всегда один) |
 | `kind` (enum physical\|energy) | физический или энергетический урон |
-| `power` (int) | сила (урон) |
-| `accuracy` (int) | шанс попадания, % |
-| `cooldown_turns` (int) | перезарядка, ходов |
-| `cast_turns` (int) | время применения, ходов |
-| `recovery_turns` (int) | время восстановления после применения, ходов |
-| `target_scope` (enum self\|ally\|enemy\|selectable) | область применения |
-| `usable_out_of_battle` (bool) | можно применять вне боя |
+| `base_power` (uint) | базовая сила (урон) |
+| `accuracy` (uint, default 100) | шанс попадания, % |
+| `cooldown_turns` (uint, default 0) | перезарядка, ходов |
+| `cast_turns` (uint, default 0) | зарядка, ходов; 0 = применяется мгновенно |
+| `recovery_turns` (uint, default 0) | восстановление после применения, ходов |
+| `target_scope` (enum self\|enemy\|ally\|any\|all\|none\|random) | кому применяется; разрешение по составу боя (1v1: ally→self, выбор в 2v2) — код резолвера |
+| `usable_in_field` (bool, default 0) | можно применять вне боя (в мире) |
 | `formula_ref` (string) | ссылка на формулу C++ (принцип 6) |
 | `tags` (tags) | флаги |
 
-*Заметки: GDD: тип у каждой атаки один, всегда есть; ≤5 одновременно у покемона, переучивание — runtime. Побочные эффекты, шанс промаха, отложенные эффекты, применение вне боя = строки `Rules/effects` (owner=ability) + колонки выше. **Требования изучения** = `Rules/conditions` (owner=ability) — отдельно от learnset вида (восстановлено после разбора чужой схемы).*
+*Заметки: GDD: тип у каждой атаки один, всегда есть; ≤5 одновременно у покемона, переучивание — runtime. Побочные эффекты, шанс промаха, отложенные эффекты, применение вне боя = строки `Rules/effect` (owner=ability) + колонки выше. **Требования изучения** = `Rules/condition` (owner=ability) — отдельно от `species_ability` вида.*
 
 ### C. `Data/Species/` (+ подпапки)
 
@@ -266,52 +256,60 @@ erDiagram
 | `species_id` (PK, string) | стабильный ID вида (`species.bulbasaur`) |
 | `name_key` (FK, string) | ключ локализации имени |
 | `desc_key` (FK, string) | ключ локализации описания |
-| `type1_id` (FK, string) | первый тип (обязателен) |
-| `type2_id` (FK?, string) | второй тип; пусто = монотип |
-| `gender_ratio` (float?) | доля женских особей; null = бесполые |
-| `base_catch_rate` (int) | базовый шанс поимки |
-| `capture_difficulty` (float) | сложность поимки (вход в формулу) |
+| `main_type_id` (FK, string) | основной, первый тип (обязателен) |
+| `additional_type_id` (FK?, string) | второй тип; пусто = монотип |
+| `gender` (enum genderless\|male_only\|female_only\|mixed) | пол вида; пропорции — `99-open-questions` #12 |
+| `catch_rate_base` (uint) | базовый шанс поимки (вход в формулу) |
 | `size_min` (float) | минимальный размер особи |
 | `size_max` (float) | максимальный размер особи |
-| `base_tint` (hex) | базовый оттенок (его переопределяет зона) |
-| `mutation_slots_max` (int) | максимум одновременных мутаций |
-| `aggro_radius` (float) | радиус агрессии |
-| `flee_radius` (float) | радиус побега |
-| `herd` (bool) | живёт стадом (дефолт) |
-| `sleep_by_time` (bool) | спит по времени суток (дефолт) |
-| `legendary` (bool) | легендарный вид |
-| `rideable` (bool) | можно ездить верхом |
-| `ride_speed` (float?) | скорость верховой езды |
-| `base_friendship` (int) | стартовое значение дружбы |
+| `tint_base` (hex) | базовый оттенок (его переопределяет зона) |
+| `tint_variance` (float; пусто = default из `Balance`) | разброс оттенка HSL ± от `tint_base` |
+| `mutation_slots_max` (uint) | максимум одновременных мутаций |
+| `perception_radius` (float) | радиус восприятия: с какого расстояния реагирует |
+| `behavior` (enum indifferent\|flees\|aggressive) | предпочитаемое поведение (зоны переопределяют) |
+| `behavior_mod` (float, default 1) | интенсивность поведения: <1 мягче, >1 сильнее |
+| `herd` (bool, default 0) | живёт стадом (дефолт) |
+| `sleep_schedule` (enum day\|night\|always\|never) | когда спит: днём, ночью, всегда, не спит |
+| `is_legendary` (bool, default 0) | легендарный вид |
+| `is_rideable` (bool, default 0) | можно ездить верхом |
+| `ride_speed_mod` (float, default 1) | множитель скорости верховой езды |
+| `friendship_base` (uint) | стартовое значение дружбы |
 | `model_path` (string) | путь к мешу в `Content/` |
 | `skeleton_path` (string) | путь к скелету в `Content/` |
-| `anim_path` (string) | путь к анимационному набору в `Content/` |
+| `animation_path` (string) | путь к анимационному набору в `Content/` |
 | `tags` (tags) | флаги |
 
-*Заметки: дефолты поведения; зона может их переопределить (GDD).*
+*Заметки: дефолты поведения; зона переопределяет `behavior` и оттенок (GDD); статы — `species_stats`; списки enum-ов — `99-open-questions` #14.*
 
-**`species_stat_range`** — диапазоны прокрутки статов вида
+**`species_stats`** — базовые статы и веса роста вида
 
 | Поле | Описание |
 |---|---|
 | `species_id` (PK, FK, string) | вид |
-| `stat` (PK, enum hp\|attack\|defense\|sp_attack\|sp_defense\|speed) | какой стат описывают границы |
-| `min` (int) | нижняя граница прокрутки базового значения |
-| `max` (int) | верхняя граница прокрутки базового значения |
-| `growth_weight` (float) | вес роста стата в пуле очков |
+| `hp_base` (uint) | базовый HP — флор, ниже которого вид не опускается |
+| `attack_base` (uint) | флор атаки |
+| `defense_base` (uint) | флор защиты |
+| `sp_attack_base` (uint) | флор спец. атаки |
+| `sp_defense_base` (uint) | флор спец. защиты |
+| `speed_base` (uint) | флор скорости |
+| `hp_weight` (float, default 1) | вес распределения очков пула в HP |
+| `attack_weight` (float, default 1) | вес в атаку |
+| `defense_weight` (float, default 1) | вес в защиту |
+| `sp_attack_weight` (float, default 1) | вес в спец. атаку |
+| `sp_defense_weight` (float, default 1) | вес в спец. защиту |
+| `speed_weight` (float, default 1) | вес в скорость |
 
-*Заметки: EAV-строки: диапазоны вида + пул очков; формула от уровня — C++ (принцип 6).*
+*Заметки: широкая вместо EAV — одна строка на вид; размер пула очков на уровень — `Balance/gameplay_config`; формула от уровня — C++ (принцип 6); сравнение с Pokémon (база фиксирована, IV/EV) — №18; семантика пула «2..100» — `99-open-questions` #13.*
 
-**`species_learnset`** — способности, изучаемые видом
+**`species_ability`** — способности, изучаемые видом
 
 | Поле | Описание |
 |---|---|
 | `species_id` (PK, FK, string) | вид |
 | `ability_id` (PK, FK, string) | изучаемая способность |
-| `method` (enum level\|tutor\|event) | как изучается |
-| `level?` (int) | уровень изучения при `method=level` |
+| `min_level?` (uint) | минимальный уровень для любого способа изучения |
 
-*Заметки: «у каждого вида свой диапазон навыков»; условия вхождения — `Rules/conditions` (owner=строка learnset).*
+*Заметки: «у каждого вида свой диапазон навыков» ✓ GDD; способы получения — `Rules/condition` (owner=строка): `level_reached, params=34` — предлагается на уровне, `has_item`/тег — обучение предметом; **новый WIP = новый тип условия**.*
 
 **`evolution`** — варианты эволюции видов
 
@@ -320,9 +318,9 @@ erDiagram
 | `evolution_id` (PK, string) | стабильный ID эволюции |
 | `from_species_id` (FK, string) | исходный вид |
 | `to_species_id` (FK, string) | вид-результат |
-| `branch_order` (int) | порядок ветвления при нескольких вариантах |
+| `sort_order` (int) | порядок вариантов при нескольких эволюциях (для UI) |
 
-*Заметки: «ИЛИ» = несколько строк от одного from; **критерии** (уровень, время суток, дружба, предмет, счётчики, победы…) = `Rules/conditions` (owner=evolution); жёсткий список to ✓ GDD.*
+*Заметки: «ИЛИ» = несколько строк от одного from; **критерии** (уровень, время суток, дружба, предметы, счётчики, победы…) = `Rules/condition` (owner=evolution), «любой из нескольких предметов» = строки с `combine=any`; жёсткий список to ✓ GDD.*
 
 **`mutation`** — мутации существ: внешние изменения
 
@@ -330,12 +328,11 @@ erDiagram
 |---|---|
 | `mutation_id` (PK, string) | стабильный ID мутации |
 | `name_key` (FK, string) | ключ локализации названия |
-| `affected_parts[]` (string list) | какие части тела затрагивает |
-| `visual_ref` (string) | ссылка на визуальный ассет |
+| `visual_ref?` (string) | общий дефолтный визуал (может отсутствовать) |
 | `hidden` (bool) | скрытая (не показывать до WIP-размножения) |
 | `tags` (tags) | флаги |
 
-*Заметки: стат-модификаторы — `Rules/effects` (owner=mutation); `hidden` — скрытые мутации из WIP-размножения.*
+*Заметки: стат-модификаторы и модификации значений — `Rules/effect` (owner=mutation); визуал по виду — переопределение `species_mutation.visual_ref`; `hidden` — скрытые мутации из WIP-размножения.*
 
 **`species_mutation`** — допустимые мутации для каждого вида
 
@@ -344,19 +341,9 @@ erDiagram
 | `species_id` (PK, FK, string) | вид |
 | `mutation_id` (PK, FK, string) | допустимая мутация |
 | `weight?` (float) | вес выпадения при генерации |
+| `visual_ref?` (string) | визуал мутации этого вида (переопределение общего) |
 
 *Заметки: допустимый набор мутаций вида; лимит — `species.mutation_slots_max`.*
-
-**`species_pigment`** — диапазоны оттенков окраски вида
-
-| Поле | Описание |
-|---|---|
-| `species_id` (PK, FK, string) | вид |
-| `tint_min` (hex) | нижняя граница оттенка |
-| `tint_max` (hex) | верхняя граница оттенка |
-| `texture_ref?` (string) | свой текстура поверх оттенка |
-
-*Заметки: базовый оттенок — `species.base_tint`.*
 
 **`species_cosmetic`** — косметика, доступная виду
 
@@ -372,10 +359,10 @@ erDiagram
 | Поле | Описание |
 |---|---|
 | `species_id` (PK, FK, string) | вид |
-| `item_id` (PK, FK, string) | съедобный предмет |
-| `preference` (int) | приоритет поедания (больше = предпочтительнее) |
+| `food_type` (PK, enum) | тип пищи (значения enum — `99-open-questions` #14) |
+| `multiplier` (float, default 1) | множитель предпочтения поедания |
 
-*Заметки: предпочтения по еде.*
+*Заметки: предпочтения по еде; любимый конкретный предмет при необходимости добавим отдельной таблицей.*
 
 **`species_breeding`** — правила размножения вида
 
@@ -383,19 +370,29 @@ erDiagram
 |---|---|
 | `species_id` (PK, FK, string) | вид-владелец правил размножения |
 
-*Заметки: **таблица-владелец**: строки `Rules/conditions` (owner=`breeding:<species>`) хранят ограничения на партнёра (GDD).*
+*Заметки: **таблица-владелец**: строки `Rules/condition` (owner=`breeding:<species>`) хранят ограничения на партнёра (GDD).*
 
-**`alt_art`** — альтернативные образы вида: события и скины
+**`species_breeding_group`** — группы совместимости вида при размножении
 
 | Поле | Описание |
 |---|---|
-| `alt_art_id` (PK, string) | стабильный ID варианта |
-| `species_id` (FK, string) | базовый вид |
-| `model_ref` (string) | ссылка на модель |
-| `texture_ref` (string) | ссылка на текстуру |
-| `acquisition` (string) | способ получения: `event:<id>` или `rule` |
+| `species_id` (PK, FK, string) | вид |
+| `breeding_type` (PK, enum) | группа совместимости; вид может входить в несколько (значения — `99-open-questions` #14) |
 
-*Заметки: альт-арт/временные события; **слот под мега-эволюции/формы (WIP)**.*
+*Заметки: совместимость партнёров — ≥1 общая группа (проверка в коде).*
+
+**`species_art`** — арты вида: базовый и альтернативные
+
+| Поле | Описание |
+|---|---|
+| `species_art_id` (PK, string) | стабильный ID арта |
+| `species_id` (FK, string) | вид |
+| `model_ref?` (string) | ссылка на модель; пусто = базовая |
+| `texture_ref?` (string) | ссылка на текстуру; пусто = базовая |
+| `is_default` (bool, default 0) | базовый арт вида (валидатор: ровно одна строка на вид) |
+| `is_wild_spawnable` (bool, default 0) | может ли сгенерироваться в дикой местности |
+
+*Заметки: получение уникальными способами — через события и триггеры (код); **слот под мега-эволюции/формы (WIP)**.*
 
 ### D. `Data/Items/`
 
@@ -406,35 +403,26 @@ erDiagram
 | `item_id` (PK, string) | стабильный ID предмета |
 | `name_key` (FK, string) | ключ локализации имени |
 | `desc_key` (FK, string) | ключ локализации описания |
-| `category` (enum consumable\|pokeball\|stone\|quest\|drop\|material\|cosmetic) | категория предмета |
-| `price` (int) | цена (одинаковая на покупку и продажу) |
-| `stackable` (bool) | стекуется |
-| `max_stack` (int) | максимум в стеке |
-| `sellable` (bool) | можно продать |
+| `category` (enum consumable\|pokeball\|quest\|material\|cosmetic) | категория предмета |
+| `price` (uint) | цена (одинаковая на покупку и продажу) |
+| `is_stackable` (bool, default 1) | стекуется |
+| `max_stack` (uint) | максимум в стеке |
+| `is_sellable` (bool, default 1) | можно продать |
 | `icon_ref` (string) | путь к иконке в `Content/` |
 | `tags` (tags) | флаги |
 
-*Заметки: **одна цена на покупку и продажу** (GDD), одинаковая для всех NPC; квестовые (`quest`) нельзя продать — валидатор проверяет `sellable=0`; эффекты (зелья/ягоды/покеболы→capture_bonus/камни→trigger_evolution/косметика→equip_slot) = `Rules/effects` (owner=item).*
+*Заметки: **одна цена на покупку и продажу** (GDD), одинаковая для всех NPC; квестовые (`quest`) нельзя продать — валидатор проверяет `is_sellable=0`; эффекты (зелья/ягоды/покеболы→capture_bonus/эволюционные камни→trigger_evolution/косметика→equip_slot) = `Rules/effect` (owner=item).*
 
-**`craft_recipe`** — рецепты крафта
+**`craft_recipe`** — рецепты крафта (указатели на правила)
 
 | Поле | Описание |
 |---|---|
 | `recipe_id` (PK, string) | стабильный ID рецепта |
-| `result_item_id` (FK, string) | что создаётся |
-| `result_count` (int) | сколько штук создаётся |
-| `minigame_id` (FK, string) | мини-игра крафта (контент WIP) |
+| `name_key` (FK, string) | ключ локализации названия |
+| `rules` (string, path) | путь к файлу правил: комбинации ингредиентов и результаты |
 | `tags` (tags) | флаги |
 
-*Заметки: разблокировка — `Rules/conditions` (owner=recipe); эпик крафта — отдельный слой (GDD).*
-
-**`recipe_ingredient`** — ингредиенты рецептов и их количество
-
-| Поле | Описание |
-|---|---|
-| `recipe_id` (PK, FK, string) | рецепт |
-| `item_id` (PK, FK, string) | ингредиент |
-| `count` (int) | сколько единиц нужно |
+*Заметки: файл `rules` — строки `inputs | outputs | minigame_id? | tags`; выражения вида `1 item.potion_s + 2 any:fish` — много результатов и альтернативных комбинаций без отдельной таблицы; один файл можно переиспользовать между рецептами; разблокировка — `Rules/condition` (owner=craft_recipe); эпик крафта — отдельный слой (GDD).*
 
 ### E. `Data/Meta/` и `Data/Balance/`
 
@@ -446,7 +434,7 @@ erDiagram
 | `value` (string) | значение (типизируется при чтении) |
 | `comment` (string) | пояснение к константе |
 
-*Заметки: константы: `party_size=6`, `ability_slots_max=5`, `active_creatures_max=2`, дистанции деспавна, параметры формул, коэффициенты поимки (правка без пересборки, принцип 6).*
+*Заметки: константы: `party_size=6`, `ability_slots_max=5`, `active_creatures_max=2`, дистанции и время деспавна, пул очков на уровень, default для `tint_variance`, параметры формул, коэффициенты поимки (правка без пересборки, принцип 6).*
 
 **`currency`** — валюты игры
 
@@ -481,7 +469,7 @@ erDiagram
 
 *Заметки: фиксированные списки слотов из GDD (персонаж 12, покемон 6).*
 
-**`loc`** — строки локализации (ru/en)
+**`locale`** — строки локализации (ru/en)
 
 | Поле | Описание |
 |---|---|
@@ -500,40 +488,44 @@ erDiagram
 | `zone_id` (PK, string) | стабильный ID зоны (`zone.route01_grass`) |
 | `name_key` (FK, string) | ключ локализации названия |
 | `kind` (enum spawn\|encounter\|weather\|mixed) | роль зоны |
+| `max_simultaneous?` (uint) | максимум особей одновременно во всей зоне |
+| `weather_interval_min_seconds?` (uint) | минимальный интервал смены погоды, с |
+| `weather_interval_max_seconds?` (uint) | максимальный интервал смены погоды, с |
 | `overrides` (string) | какие дефолты вида переопределяет (напр. `override_tint`) |
 | `tags` (tags) | флаги |
 
-*Заметки: **конфиг в CSV, геометрия — volume-актор в уровне со ссылкой `zone_id`** (№6).*
+*Заметки: **конфиг в CSV, геометрия — volume-актор в уровне со ссылкой `zone_id`** (№6); общие правила зоны и их конкатенация с правилами типа зоны — отложены (`99-open-questions` #10).*
 
 **`zone_spawn`** — спавн видов в зонах
 
 | Поле | Описание |
 |---|---|
-| `row_id` (PK, string) | стабильный ID строки спавна |
+| `spawn_id` (PK, string) | стабильный ID строки спавна |
 | `zone_id` (FK, string) | зона |
 | `species_id` (FK, string) | вид |
-| `weight` (int) | вес выпадения при генерации спавна |
-| `max_simultaneous` (int) | максимум особей одновременно |
-| `despawn_distance` (float) | дистанция деспавна |
-| `despawn_time` (float) | время жизни особи, с |
-| `legendary` (bool) | легендарная строка спавна |
-| `despawnable` (bool) | исчезает ли особь |
+| `weight` (uint) | вес выпадения при генерации спавна |
+| `level_min?` (uint) | минимальный уровень особи |
+| `level_max?` (uint) | максимальный уровень особи |
+| `active_time` (enum day\|night\|any, default any) | когда строка активна |
+| `can_sleep` (bool, default 1) | могут ли особи этой строки спать в зоне |
+| `despawnable` (bool, default 1) | исчезает ли особь |
 | `override_tint?` (hex) | переопределение оттенка вида в зоне |
+| `override_behavior?` (enum indifferent\|flees\|aggressive) | переопределение поведения вида в зоне |
 
-*Заметки: условия — `Rules/conditions` (owner=строка); **легендарные = те же строки**: `legendary=1`, `despawnable=0`, условия появления (GDD).*
+*Заметки: условия — `Rules/condition` (owner=строка); лимит особей — `zone.max_simultaneous`; глобальные параметры деспавна — `Balance`; **легендарные ставятся на карту вручную**, спавн-строк для них нет (GDD).*
 
 **`zone_encounter`** — случайные встречи в кустах
 
 | Поле | Описание |
 |---|---|
-| `row_id` (PK, string) | стабильный ID строки |
+| `encounter_id` (PK, string) | стабильный ID строки |
 | `zone_id` (FK, string) | зона |
 | `species_id` (FK, string) | вид |
-| `level_min` (int) | минимальный уровень |
-| `level_max` (int) | максимальный уровень |
-| `weight` (int) | вес выпадения |
+| `level_min` (uint) | минимальный уровень |
+| `level_max` (uint) | максимальный уровень |
+| `weight` (uint) | вес выпадения |
 
-*Заметки: «кусты» — случайные нападения; условия — `Rules/conditions` (owner=строка).*
+*Заметки: «кусты» — случайные нападения; условия — `Rules/condition` (owner=строка).*
 
 **`zone_weather`** — погодный режим зон
 
@@ -541,11 +533,10 @@ erDiagram
 |---|---|
 | `zone_id` (PK, FK, string) | зона |
 | `weather_id` (PK, FK, string) | допустимая погода |
-| `interval_min_s` (int) | минимальный интервал, с |
-| `interval_max_s` (int) | максимальный интервал, с |
-| `weight` (int) | вес выпадения |
+| `weight` (uint) | вес выпадения |
+| `is_default` (bool, default 0) | погода по умолчанию в зоне |
 
-*Заметки: вручную настраиваемые диапазоны и интервалы (GDD).*
+*Заметки: интервалы ротатора — колонки `zone.weather_interval_*`; веса и дефолт — построчно (GDD).*
 
 **`weather`** — типы погоды в мире
 
@@ -556,41 +547,17 @@ erDiagram
 | `vfx_ref` (string) | ссылка на VFX-эффект |
 | `tags` (tags) | флаги |
 
-*Заметки: боевые/мир-эффекты — `Rules/effects` (owner=weather).*
+*Заметки: боевые/мир-эффекты — `Rules/effect` (owner=weather).*
 
 **`time_of_day`** — смена времён суток в мире
 
 | Поле | Описание |
 |---|---|
-| `phase_id` (PK, string) | стабильный ID фазы |
-| `duration_s` (int) | длительность фазы, с |
+| `phase_id` (PK, string) | ID фазы; значения = enum фаз из кода |
+| `duration_seconds` (uint) | длительность фазы, с |
 | `light_preset` (string) | пресет освещения |
 
-*Заметки: глобальные интервалы — в `Balance`; условие `time_of_day` читает отсюда.*
-
-**`teleport`** — перемещения: навыки покемонов и транспорт
-
-| Поле | Описание |
-|---|---|
-| `teleport_id` (PK, string) | стабильный ID телепорта |
-| `kind` (enum skill\|object) | навык покемона или объект мира |
-| `from_anchor` (string) | точка отправления |
-| `to_anchor` (string) | точка прибытия |
-| `route_ref?` (string) | маршрут (для кораблей/поездов) |
-| `tags` (tags) | флаги |
-
-*Заметки: корабли/поезда = kind=object с маршрутом; навык покемона = `ability(usable_out_of_battle, effect=teleport)` (GDD).*
-
-**`map_marker`** — метки схематичной карты мира
-
-| Поле | Описание |
-|---|---|
-| `marker_id` (PK, string) | стабильный ID метки |
-| `type` (string) | тип метки |
-| `anchor` (string) | привязка в мире |
-| `label_key` (FK, string) | ключ подписи |
-
-*Заметки: схематичная карта мира, без миникарты (GDD).*
+*Заметки: таблица-конфигуратор фаз — длительность и свет правятся без пересборки; условие `time_of_day` читает отсюда; список фаз даёт код.*
 
 ### G. `Data/NPCs/` и `Data/Quests/`
 
@@ -601,75 +568,103 @@ erDiagram
 | `npc_id` (PK, string) | стабильный ID NPC |
 | `name_key` (FK, string) | ключ локализации имени |
 | `appearance[]` (option_id list) | варианты внешности из каталога |
-| `battle_enabled` (bool) | может ли драться |
-| `battle_cooldown_s` (int) | кулдаун между боями, с |
+| `battle_trigger` (enum none\|dialogue\|aggressive\|both) | как начинается бой: сам нападает / по диалогу / оба / нет |
+| `battle_cooldown_seconds` (uint) | кулдаун между боями, с |
 | `battle_group_id` (FK?, string) | команда для боя; пусто = без боя |
-| `shop_id?` (FK, string) | его магазин |
-| `dialogue_id?` (FK, string) | его диалог |
-| `icon_flags` (tags) | иконки взаимодействий над NPC |
 | `tags` (tags) | флаги |
 
-*Заметки: **набор** взаимодействий одновременно (talk/battle/trade/quest — не один enum); подсветка иконкой ✓ GDD; placement — anchor в уровне.*
+*Заметки: **набор** взаимодействий одновременно (talk/battle/trade/quest — не один enum); магазины — `shop` (1:N), диалоги — связующая `npc_dialogue`; иконки взаимодействий считает код; пресеты одежды — `99-open-questions` #11; placement — anchor в уровне.*
+
+**`shop`** — магазины NPC
+
+| Поле | Описание |
+|---|---|
+| `shop_id` (PK, string) | стабильный ID магазина |
+| `npc_id` (FK, string) | владелец-продавец |
+| `restock_cooldown_seconds?` (uint) | как часто восстанавливаются позиции; пусто = не восстанавливаются |
+| `tags` (tags) | флаги |
+
+*Заметки: товары — `shop_stock`; порядок и лимиты — там же.*
+
+**`dialogue`** — диалоги (владельцы реплик)
+
+| Поле | Описание |
+|---|---|
+| `dialogue_id` (PK, string) | стабильный ID диалога |
+| `name_key` (FK, string) | ключ локализации названия |
+| `tags` (tags) | флаги |
+
+*Заметки: выбор активного диалога — `Rules/condition` (owner=dialogue); привязка к NPC — `npc_dialogue`; запуск не от NPC и повторы — `99-open-questions` #8.*
+
+**`npc_dialogue`** — диалоги, доступные NPC
+
+| Поле | Описание |
+|---|---|
+| `npc_id` (PK, FK, string) | персонаж |
+| `dialogue_id` (PK, FK, string) | диалог |
 
 **`dialogue_node`** — реплики и ветвление диалогов
 
 | Поле | Описание |
 |---|---|
 | `node_id` (PK, string) | стабильный ID реплики |
-| `dialogue_id` (string) | диалог-владелец |
-| `seq` (int) | порядок в линейной части |
-| `text_key` (FK, string) | текст реплики → `Meta/loc` |
-| `next_node_id?` (FK, string) | следующая реплика |
-| `action?` (string) | действие при выборе (магазин, выдать квест) |
+| `dialogue_id` (FK, string) | диалог-владелец |
+| `prev_node_id?` (FK, string) | родительская реплика; её дочерние = варианты ответов; пусто = старт диалога |
+| `sort_order` (int) | порядок вариантов среди дочерних |
+| `text_key` (FK, string) | текст реплики → `Meta/locale` |
+| `action?` (enum none\|open_shop\|give_quest\|start_battle\|end_dialogue) | действие при выборе реплики (значения — `99-open-questions` #14) |
+| `params?` (string) | параметры действия |
 
-*Заметки: реплики вручную + ветвление; условие/квест-триггер — `Rules/conditions` (owner=node).*
+*Заметки: ветвление — дети по `prev_node_id` (несколько дочерних = варианты ответов, порядок — `sort_order`); условия показа и квест-триггеры — `Rules/condition` (owner=node).*
 
 **`shop_stock`** — товары на полках магазинов
 
 | Поле | Описание |
 |---|---|
-| `row_id` (PK, string) | стабильный ID строки |
-| `shop_id` (string) | магазин-владелец |
+| `stock_id` (PK, string) | стабильный ID позиции |
+| `shop_id` (FK, string) | магазин-владелец |
 | `item_id` (FK, string) | товар |
+| `count?` (uint) | лимит покупок; пусто = без лимита |
+| `is_restockable` (bool, default 0) | восстанавливается ли позиция (период — `shop.restock_cooldown_seconds`) |
+| `sort_order` (int) | порядок отображения |
 
-*Заметки: условия появления позиции — `Rules/conditions` (owner=строка).*
+*Заметки: условия появления позиции — `Rules/condition` (owner=строка).*
 
-**`trainer_group`** — шаблоны команд тренеров
+**`battle_group`** — шаблоны боевых команд
 
 | Поле | Описание |
 |---|---|
-| `group_id` (PK, string) | стабильный ID группы |
+| `battle_group_id` (PK, string) | стабильный ID группы |
 | `rules_id` (FK → `trainer_rules`) | правила боя |
 | `tags` (tags) | метки для пулов генерации |
 
-*Заметки: команда-шаблон: NPC и генеративные турниры используют один механизм.*
+*Заметки: команда-шаблон: NPC (ссылкой `npc.battle_group_id`) и генеративные турниры используют один механизм; группам без тренера NPC не требуется.*
 
-**`trainer_team`** — состав команды тренера: слоты и бойцы
+**`battle_group_member`** — состав боевой команды: слоты и бойцы
 
 | Поле | Описание |
 |---|---|
-| `row_id` (PK, string) | стабильный ID строки |
-| `group_id` (FK, string) | группа |
-| `slot` (int) | номер слота в команде |
+| `member_id` (PK, string) | стабильный ID строки |
+| `battle_group_id` (FK, string) | группа |
+| `slot` (uint) | номер слота в команде |
 | `species_id` (FK, string) | вид бойца |
-| `level` (int) | уровень бойца |
+| `level` (uint) | уровень бойца |
 | `ability_ids[]` (string list) | изученные способности (≤5) |
 | `nature_id?` (FK, string) | характер |
-| `item_id?` (FK, string) | держимый предмет |
 | `tags` (tags) | флаги |
 
-*Заметки: списки — редний контент, валидатор проверяет каждый id.*
+*Заметки: списки — редний контент, валидатор проверяет каждый id; держимые предметы не используются (GDD); живой пул существ NPC — `99-open-questions` #7.*
 
 **`trainer_rules`** — ограничения боёв тренеров
 
 | Поле | Описание |
 |---|---|
 | `rules_id` (PK, string) | стабильный ID правил |
-| `max_legendaries` (int) | максимум легендарных в команде |
-| `level_cap` (int) | потолок уровня |
-| `side_count` (int 1..2) | число сторон боя |
+| `format` (enum solo\|double\|tournament) | вид боя (значения — `99-open-questions` #14) |
+| `max_legendaries` (uint) | максимум легендарных в команде |
+| `level_cap` (uint) | потолок уровня |
 
-*Заметки: ограничения боя выставляются вручную (GDD); награды = `reward` (owner=rules).*
+*Заметки: ограничения боя выставляются вручную (GDD); награды = `reward` (owner=trainer_rules).*
 
 **`quest`** — квесты: типы, выдача, повторы
 
@@ -677,45 +672,37 @@ erDiagram
 |---|---|
 | `quest_id` (PK, string) | стабильный ID квеста |
 | `kind` (enum story\|daily\|weekly) | тип квеста |
-| `repeatable` (bool) | можно ли повторять |
-| `cooldown_s` (int) | кулдаун повтора, с |
-| `giver_npc_id` (FK?, string) | NPC-задатчик; пусто = не от NPC |
-| `prereq_quest_ids[]` (string list) | prerequisite-квесты |
-| `template_params` (string) | пулы random-целей для daily/weekly |
+| `is_repeatable` (bool, default 0) | можно ли повторять |
+| `cooldown_seconds` (uint) | кулдаун повтора, с |
+| `npc_id` (FK?, string) | NPC-задатчик; пусто = не от NPC |
+| `params?` (string) | пул random-целей для daily/weekly (конфиг генератора) |
 | `tags` (tags) | флаги |
 
-*Заметки: **1 NPC → много квестов**; условия — conditions (owner=quest); награды — reward (owner=quest).*
+*Заметки: **1 NPC → много квестов**; prerequisites и прочие требования — `Rules/condition` (owner=quest, напр. `quest_done`); награды — `reward` (owner=quest).*
 
-**`quest_stage`** — этапы квестов
-
-| Поле | Описание |
-|---|---|
-| `stage_id` (PK, string) | стабильный ID этапа |
-| `quest_id` (FK, string) | квест |
-| `seq` (int) | порядок этапа |
-
-**`quest_objective`** — цели этапов квестов
+**`quest_objective`** — цели квестов: что и сколько выполнить
 
 | Поле | Описание |
 |---|---|
 | `objective_id` (PK, string) | стабильный ID цели |
-| `stage_id` (FK, string) | этап |
+| `quest_id` (FK, string) | квест |
+| `seq` (uint) | порядок целей (этапы = блоки по `seq`, если понадобятся) |
 | `type` (enum defeat\|collect\|visit\|talk\|…) | тип цели |
 | `target_id` (string) | цель (вид, предмет, NPC, зона…) |
-| `count` (int) | сколько выполнить |
+| `count` (uint) | сколько выполнить |
 
-*Заметки: случайные переменные daily/weekly — через `template_params` + пул вида/типа (GDD).*
+*Заметки: случайные переменные daily/weekly — через `quest.params` + пул вида/типа (GDD).*
 
 **`reward`** — универсальные награды: квесты, NPC, события
 
 | Поле | Описание |
 |---|---|
-| `row_id` (PK, string) | стабильный ID строки награды |
+| `reward_id` (PK, string) | стабильный ID строки награды |
 | `owner_type` (enum, см. §3 R) | домен-владелец |
 | `owner_id` (string) | ID владельца в домене |
 | `reward_type` (enum item\|currency\|achievement\|unlock) | тип награды |
 | `target_id` (string) | что выдаётся |
-| `count` (int) | сколько выдаётся |
+| `count` (uint) | сколько выдаётся |
 | `chance` (float) | шанс выпадения, 0..1 |
 
 *Заметки: **общий механизм наград**: квесты, NPC, турниры (WIP-место), залы (WIP), достижения, активности.*
@@ -727,40 +714,30 @@ erDiagram
 | Поле | Описание |
 |---|---|
 | `config_id` (PK, string) | стабильный ID конфига |
-| `generation_params` (string) | число тренеров, level range |
-| `rules_id` (FK → `trainer_rules`) | правила боя |
+| `kind` (enum) | вид турнира — выбирает логику в коде (значения — `99-open-questions` #14) |
+| `config` (string, path) | путь к файлу конфигурации (число тренеров, level range, правила) |
 | `tags` (tags) | метки для пулов |
 
-*Заметки: цепочка тренеров из `trainer_group` (пулы); награды = reward (owner=config) — **место под WIP «Награды»**.*
+*Заметки: цепочка тренеров — пулы `battle_group` по tags; награды = `reward` (owner=tournament_config) — **место под WIP «Награды»**.*
 
 **`roguelike_cave_config`** — правила процедурных пещер
 
 | Поле | Описание |
 |---|---|
 | `config_id` (PK, string) | стабильный ID конфига |
-| `path_params` (string) | параметры генерации пути |
-| `keep_rules` (string) | что сохраняется между заходами |
+| `kind` (enum) | вид пещеры — выбирает логику в коде (значения — `99-open-questions` #14) |
+| `config` (string, path) | путь к файлу конфигурации (длина пути, что сохраняется между заходами и т.п.) |
 | `tags` (tags) | флаги |
 
-*Заметки: стартовый пул — строки `roguelike_starter`; награды = reward.*
-
-**`roguelike_starter`** — пул стартовых существ в пещере
-
-| Поле | Описание |
-|---|---|
-| `config_id` (PK, FK, string) | конфиг пещеры |
-| `species_id` (PK, FK, string) | кандидат в стартовые |
-| `weight` (int) | вес выпадения |
-
-*Заметки: «выбор из одного случайного покемона» (GDD).*
+*Заметки: награды = `reward` (owner=roguelike_cave_config); стартовый выбор существа — механизм дорабатывается (`99-open-questions` #4).*
 
 **`contest_config`** — конфигурация конкурсов
 
 | Поле | Описание |
 |---|---|
 | `config_id` (PK, string) | стабильный ID конфига |
-| `minigame_id` (FK, string) | мини-игра конкурса |
-| `scoring_params` (string) | параметры подсчёта очков |
+| `kind` (enum) | вид конкурса — выбирает логику в коде (значения — `99-open-questions` #14) |
+| `config` (string, path) | путь к файлу конфигурации (мини-игра, параметры подсчёта) |
 | `tags` (tags) | флаги |
 
 *Заметки: **WIP** (реакционная механика).*
@@ -771,19 +748,21 @@ erDiagram
 |---|---|
 | `minigame_id` (PK, string) | стабильный ID мини-игры |
 | `kind` (enum reaction\|craft) | тип мини-игры |
-| `difficulty_ref` (string) | ссылка на кривую сложности |
+| `config` (string, path) | путь к файлу с параметрами/кривыми сложности |
 | `tags` (tags) | флаги |
 
 *Заметки: **WIP**; общий для крафта и конкурса.*
 
-**`achievement`** — достижения: категории и очки
+**`achievement`** — достижения: категории и иконки
 
 | Поле | Описание |
 |---|---|
 | `achievement_id` (PK, string) | стабильный ID достижения |
-| `category` (string) | категория |
-| `points` (int) | очки достижения |
-| `hidden` (bool) | скрыто до выполнения |
+| `name_key` (FK, string) | ключ локализации названия |
+| `desc_key` (FK, string) | ключ локализации описания |
+| `category` (enum) | категория (значения — `99-open-questions` #14) |
+| `icon_ref` (string) | путь к иконке в `Content/` |
+| `hidden` (bool, default 0) | скрыто до выполнения |
 | `tags` (tags) | флаги |
 
 *Заметки: условия — conditions (owner=achievement); награды — reward (item/постоянный эффект ✓ GDD).*
@@ -793,13 +772,11 @@ erDiagram
 | Поле | Описание |
 |---|---|
 | `event_id` (PK, string) | стабильный ID события |
-| `kind` (string) | тип события |
-| `start_at` (string) | время начала |
-| `end_at` (string) | время окончания |
-| `content_refs[]` (string list) | подключаемые контенты события |
+| `name_key` (FK, string) | ключ локализации названия |
+| `config` (string, path) | путь к файлу конфигурации (тайминги, контент) |
 | `tags` (tags) | флаги |
 
-*Заметки: временные события; награды — reward; основной источник альт-артов (GDD).*
+*Заметки: награды — `reward` (owner=event); основной источник альт-артов (GDD); детали механики — `99-open-questions` #3.*
 
 ### R. `Data/Rules/` — универсальные механизмы (решение №2)
 
@@ -807,7 +784,7 @@ erDiagram
 
 | Поле | Описание |
 |---|---|
-| `row_id` (PK, string) | стабильный ID строки |
+| `condition_id` (PK, string) | стабильный ID строки |
 | `owner_type` (enum, см. ниже) | домен-владелец |
 | `owner_id` (string) | ID владельца в домене |
 | `condition_type` (string) | тип условия (`level_ge`, `time_of_day`, …) |
@@ -820,21 +797,22 @@ erDiagram
 
 | Поле | Описание |
 |---|---|
-| `row_id` (PK, string) | стабильный ID строки |
+| `effect_id` (PK, string) | стабильный ID строки |
 | `owner_type` (enum, см. ниже) | домен-владелец |
 | `owner_id` (string) | ID владельца в домене |
 | `effect_type` (string) | тип эффекта (`damage`, `apply_status`, …) |
 | `target` (string) | цель эффекта |
 | `params` (string) | параметры эффекта |
 | `chance` (float) | шанс срабатывания, 0..1 |
-| `duration` (int) | длительность, если применимо |
+| `duration` (uint?) | длительность, если применимо |
 
 *Заметки: типы: `damage` (формула C++), `apply_status`, `modify_stat`, `buff`, `teleport`, `give_item`, `trigger_evolution`, `capture_bonus`, `equip_slot`, `give_achievement`, …*
 
-`owner_type` — закрытый список доменов (`species`, `species_learnset`, `evolution`, `ability`,
-`breeding`, `item`, `status`, `mutation`, `weather`, `zone_spawn`, `zone_encounter`,
-`shop_stock`, `dialogue_node`, `quest`, `recipe`, `achievement`, `trainer_rules`, `event`, …);
-валидатор проверяет, что `owner_id` существует в указанном домене.
+`owner_type` — закрытый список доменов (= имя таблицы: `species`, `species_ability`, `evolution`,
+`ability`, `breeding`, `item`, `status`, `mutation`, `weather`, `zone_spawn`, `zone_encounter`,
+`shop_stock`, `dialogue`, `dialogue_node`, `quest`, `craft_recipe`, `achievement`,
+`trainer_rules`, `event`, …); валидатор проверяет, что `owner_id` существует в указанном домене.
+Правила зон и типа зоны (`zone`/`zone_type`) — отложены (`99-open-questions` #10).
 
 ---
 
@@ -845,54 +823,64 @@ erDiagram
 | `player_profile` | `display_name`, `appearance[] (option_id)`, `card_tiles[]` |
 | `player_currency` | `(currency_id, balance)` — список балансов |
 | `inventory` | `(item_id, count)` — стеки; квестовые помечаются категорией шаблона; банк = отдельный список, партия = слоты 0–5 |
-| `creature_instance` | `uuid (PK)`, `species_id`, `nickname?`*, `level`, `xp`, `current_hp`, `stats` (rolled base + trained + боевые модификаторы), `stat_training_points`, `ability_slots[≤5]` + **счётчики использования** (для требований изучения), `nature_id`, `gender`, `friendship`, `size_value`, `pigment_hex`, `mutation_ids[]`, `cosmetics[] (slot→item)`, `status[]` (персистентные до лечения — GDD), `alt_art_id?`, `origin (wild\|bred\|legendary\|event)`, `met_location_id`, `met_date` |
+| `creature_instance` | `uuid (PK)`, `species_id`, `nickname?`*, `level`, `xp`, `current_hp`, `stats` (rolled base + trained + боевые модификаторы), `stat_training_points`, `ability_slots[≤5]` + **счётчики использования** (для требований изучения), `nature_id`, `gender`, `friendship`, `size_value`, `pigment_hex`, `mutation_ids[]`, `cosmetics[] (slot→item)`, `status[]` (персистентные до лечения — GDD), `species_art_id?`, `origin (wild\|bred\|legendary\|event)`, `met_location_id`, `met_date` |
 | `pokedex_state` | `(species_id, seen, caught)` |
-| `quest_progress` | `(quest_id, stage_seq, counters[])` |
+| `quest_progress` | `(quest_id, objective_seq, counters[])` |
 | `achievement_progress` | `(achievement_id, value, done)` |
 | `world_state` | время суток, `spawned[zone→instance ids]`, флаги легендарных, override погоды |
 | `save_meta` | `schema_version`, `balance_version`, `game_version`, `saved_at`, `playtime_s` — **миграции по версиям (№12)** |
 
 `*` nickname в GDD отсутствует — колонка зарезервирована, не используется до расширения GDD.
 
-## 5. Принятые решения (13/13)
+## 5. Принятые решения
 
 | # | Тема | Решение |
 |---|---|---|
 | 1 | ID-схема | namespaced slug (`species.bulbasaur`), синтаксис = GameplayTags |
-| 2 | Условия/эффекты | построчные `Rules/conditions` + `Rules/effects` (AND; «ИЛИ» = несколько владельцев) |
+| 2 | Условия/эффекты | построчные `Rules/condition` + `Rules/effect` (AND; «ИЛИ» = несколько владельцев) |
 | 3 | Матрица типов | полная сетка 12×12 = 144 строки |
 | 4 | Параметры | частые — типизированные колонки; редкие — `params`-строка |
-| 5 | Локализация | отдельный слой `Meta/loc` |
+| 5 | Локализация | отдельный слой `Meta/locale` |
 | 6 | Зоны | конфиг в CSV + volume-актор в уровне (`zone_id`), границ не в CSV |
-| 7 | Species | хаб + child-таблицы; `Species/Mutations/`, `Species/Pigments/` вложены |
+| 7 | Species | хаб + child-таблицы; `Species/Mutations/` вложены (Pigments отменены — №19) |
 | 8 | `Data/` | база разработчика + домены Battle/World/Activities/Rules/Meta |
 | 9 | `Content/` | база разработчика + `Input/`, `Caves→Instances`, `Pokemon/Base` |
 | 10 | Термин | **`Ability`** (`Data/Abilities/`), рус. «способность» — термин GDD |
 | 11 | Формулы | база в C++ (тесты), параметры/веса в CSV, кривые — CurveTable |
 | 12 | Версии save | `schema_version` + `balance_version`, явные C++-миграции, автопересчёт только по правилу |
 | 13 | Чужие механики | держимые предметы, яйца, бейджи, фракции, `unlocked_zones`, боксы — **не делаем**; яйца → открытые вопросы |
+| 14 | Нейминг данных | таблицы — ед. ч.; квалификатор после существительного (`catch_rate_base`, `size_min`); bool — `is_`/`has_`; время — `_seconds`; PK = `<entity>_id` (AGENTS §5) |
+| 15 | Типы и дефолты | `uint` = неотрицательное; `(uniq)` = уникальная комбинация вне PK; пустая ячейка CSV = `default` |
+| 16 | Гибкость без jsonb-колонок | два канала: правила игры → `Rules/condition` + `Rules/effect` + `reward` (`owner_type`/`owner_id`); конфиги активностей → колонка `config`/`rules` (путь к файлу) |
+| 17 | Поведение | `species.behavior` + `behavior_mod`; зона переопределяет (`zone_spawn.override_behavior`); влияние характеров отложено |
+| 18 | Статы | `species_stats` широкой (6 баз + 6 весов), EAV отменён; пул очков — `Balance` (ресерч Pokémon: база фиксирована, IV/EV) |
+| 19 | Пигменты | `tint_variance` — коэффициент от `tint_base`; `species_pigment` удалена |
+| 20 | Рецепты | `craft_recipe` — указатель на `rules`-файл (inputs/outputs, много результатов); `recipe_ingredient` удалена |
+| 21 | Диалоги | граф через `prev_node_id` + `sort_order`; варианты ответов = дочерние ноды |
+| 22 | Активности | тонкие таблицы: `kind` (выбирает код-логику) + `config` (путь к файлу) |
 
 ## 6. Утверждённые каталоги
 
 ```text
 Data/
-├── Species/            # species, species_stat_range, species_learnset, evolution,
-│   │                   #   species_cosmetic, species_food, species_breeding, alt_art
-│   ├── Mutations/      # mutation, species_mutation
-│   └── Pigments/       # species_pigment
+├── Species/            # species, species_stats, species_ability, evolution,
+│   │                   #   species_cosmetic, species_food, species_breeding,
+│   │                   #   species_breeding_group, species_art
+│   └── Mutations/      # mutation, species_mutation
 ├── Types/              # type, type_chart
 ├── Abilities/          # ability          (эффекты/условия → Rules/)
 ├── Battle/             # status, nature
-├── Items/              # item, craft_recipe, recipe_ingredient
+├── Items/              # item, craft_recipe (+ файлы rules-рецептов)
 ├── Zones/              # zone, zone_spawn, zone_encounter, zone_weather, weather
-├── World/              # time_of_day, teleport, map_marker
-├── NPCs/               # npc, dialogue_node, shop_stock, trainer_group, trainer_team, trainer_rules
-├── Quests/             # quest, quest_stage, quest_objective, reward
-├── Activities/         # tournament_config, roguelike_cave_config, roguelike_starter,
-│                       #   contest_config, minigame, achievement, event
+├── World/              # time_of_day
+├── NPCs/               # npc, shop, dialogue, npc_dialogue, dialogue_node, shop_stock,
+│                       #   battle_group, battle_group_member, trainer_rules
+├── Quests/             # quest, quest_objective, reward
+├── Activities/         # tournament_config, roguelike_cave_config, contest_config,
+│                       #   minigame, achievement, event
 ├── Rules/              # condition, effect
 ├── Balance/            # gameplay_config
-└── Meta/               # loc, currency, appearance_option, cosmetic_slot
+└── Meta/               # locale, currency, appearance_option, cosmetic_slot
 
 Content/
 ├── Core/               # GameMode, PlayerController, GameState, PlayerState (тонкие BP)
@@ -917,11 +905,13 @@ Content/
 
 | WIP из GDD | Где живёт, когда созреет |
 |---|---|
-| Мега-эволюции / первобытная реверсия | новые строки/таблица рядом с `alt_art` + condition/trigger-типы |
+| Мега-эволюции / первобытная реверсия | новые строки/таблица рядом с `species_art` + condition/trigger-типы |
 | Награды генеративных турниров | строки `reward` (owner=tournament_config) |
-| Мини-игры (реакционные, крафт) | `minigame`, `contest_config`, `craft_recipe.minigame_id` — структура готова, контент WIP |
+| Мини-игры (реакционные, крафт) | `minigame`, `config`-файлы конкурсов и рецептов — структура готова, контент WIP |
 | Катсцены | уровень контента (Content/), данные — при появлении ТЗ |
 | Формат размножения (яйца?) | открытый вопрос `Docs/GDD/99-open-questions.md` #10 |
+
+Отложенные и открытые вопросы ревью схемы — `Docs/data/99-open-questions.md`.
 
 ## 8. Комментарии на ревью
 
